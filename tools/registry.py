@@ -9,7 +9,9 @@
 说明书在 get_schemas() 里生成,执行在 call() 里发生。
 """
 
-from typing import Callable
+from typing import Callable, Optional
+
+from core.reliability import run_reliably
 
 
 class ToolRegistry:
@@ -22,12 +24,24 @@ class ToolRegistry:
         description: str,
         parameters: dict,
         func: Callable,
+        timeout: float = 15.0,
+        retries: int = 2,
+        fallback: Optional[Callable] = None,
     ) -> None:
-        """登记一个工具:名字、说明、参数结构、真正执行的函数。"""
+        """登记一个工具。
+
+        除了名字/说明/参数/函数,还可以为每个工具单独配置可靠性策略:
+            timeout:  单次执行超时(秒)
+            retries:  失败后最多重试几次
+            fallback: 全部失败后的兜底函数(可选)
+        """
         self._tools[name] = {
             "description": description,
             "parameters": parameters,
             "func": func,
+            "timeout": timeout,
+            "retries": retries,
+            "fallback": fallback,
         }
 
     def get_schemas(self) -> list[dict]:
@@ -49,14 +63,19 @@ class ToolRegistry:
     def call(self, name: str, arguments: dict) -> str:
         """执行指定工具,返回字符串形式的结果(observation 观察)。
 
-        这里用 try/except 兜底:工具出错时不让整个 Agent 崩掉,而是把错误
-        信息作为观察返回给 LLM——这是"可靠性"最朴素的一步,M2 会继续加
-        重试、超时、降级等。
+        M2 起,执行不再是"裸调用",而是交给 run_reliably 统一包上
+        超时 + 重试 + 降级。这样任何工具出问题,Agent 都不会崩,最坏也只是
+        拿到一段兜底说明,继续往下走。
         """
         if name not in self._tools:
             return f"错误:不存在名为 {name} 的工具。"
-        try:
-            result = self._tools[name]["func"](**arguments)
-            return str(result)
-        except Exception as exc:  # noqa: BLE001 教学项目,先统一兜底
-            return f"工具 {name} 执行出错:{exc}"
+
+        tool = self._tools[name]
+        result = run_reliably(
+            func=tool["func"],
+            kwargs=arguments,
+            timeout=tool["timeout"],
+            retries=tool["retries"],
+            fallback=tool["fallback"],
+        )
+        return str(result)

@@ -5,11 +5,11 @@
 
 ## 里程碑规划
 
-- **M1(当前):手写最小 Agent** —— tool registry + 主循环 + Function Calling + Trajectory。
-- M2:接真实工具(行情/搜索/抓网页)+ 可靠性(重试/超时/降级)+ Sandbox。
+- **M1(已完成):手写最小 Agent** —— tool registry + 主循环 + Function Calling + Trajectory。
+- **M2(已完成):真实工具 + 可靠性 + Sandbox** —— 行情/搜索/抓网页;重试/超时/降级;SSRF 护栏。
 - M3:RAG(向量库检索历史研报)+ 记忆。
 - M4:Eval 评测体系(golden 数据集 + LLM-as-Judge + 回归)。
-- M5:用 LangGraph 重构 + 可观测(日志/指标/trace)。
+- M5:用 LangGraph 重构 + 可观测(日志/指标/trace);把工具改造成 MCP server。
 
 ## M1 概念对照表(名词都落在哪)
 
@@ -21,6 +21,9 @@
 | Trajectory(轨迹) | `core/schema.py` 定义,`core/agent.py` 里逐圈填充 |
 | 模型可替换 | `core/llm.py`(改环境变量即可切换) |
 | 防死循环(可靠性雏形) | `core/agent.py` 的 `max_steps` |
+| 重试 / 超时 / 降级(M2) | `core/reliability.py`,注册工具时按需配置 |
+| Sandbox / SSRF 护栏(M2) | `core/sandbox.py`,`fetch_page` 抓取前先校验 |
+| 真实工具(M2) | `tools/finance.py`(yfinance / DuckDuckGo / httpx+bs4) |
 
 ## 运行方式
 

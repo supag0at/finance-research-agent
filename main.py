@@ -17,41 +17,70 @@ from tools import finance
 from tools.registry import ToolRegistry
 
 
+def _stock_fallback(symbol: str = "", days: int = 30) -> dict:
+    """行情工具的降级兜底:真实接口失败时,至少告诉模型"数据暂不可用",
+    而不是让流程崩掉。模型看到这个,会知道不要编造数字。"""
+    return {"symbol": symbol, "error": "行情数据暂时不可用,请勿编造数字。"}
+
+
 def build_agent() -> Agent:
     """组装 Agent:创建工具注册表、登记工具、注入 LLM。"""
     tools = ToolRegistry()
 
-    # 登记"查行情"工具。注意 parameters 就是给 LLM 看的 Tool Schema,
-    # 描述写得越清楚,LLM 越知道该在什么时候、传什么参数来调它。
+    # 登记"查行情"工具。parameters 就是给 LLM 看的 Tool Schema,描述写得越清楚,
+    # LLM 越知道该在什么时候、传什么参数来调它。
+    # 这里还给它配了可靠性策略:超时 20s、重试 2 次、失败降级。
     tools.register(
         name="get_stock_price",
-        description="查询某只股票最近若干天的涨跌幅、最新价和趋势。需要行情数据时调用。",
+        description="查询某只股票最近若干个交易日的涨跌幅、最新价、最高/最低价。需要行情数据时调用。",
         parameters={
             "type": "object",
             "properties": {
                 "symbol": {"type": "string", "description": "股票代码,例如 NVDA、AAPL"},
-                "days": {"type": "integer", "description": "最近多少天,默认 5"},
+                "days": {"type": "integer", "description": "最近多少个交易日,默认 30"},
             },
             "required": ["symbol"],
         },
         func=finance.get_stock_price,
+        timeout=20.0,
+        retries=2,
+        fallback=_stock_fallback,
     )
 
-    # 登记"搜新闻"工具。
+    # 登记"搜新闻"工具(真实网页搜索)。
     tools.register(
         name="search_news",
-        description="按关键词搜索与某公司或主题相关的新闻。需要了解事件/原因时调用。",
+        description="按关键词做网页搜索,返回相关新闻的标题、链接和摘要。需要了解事件/原因时调用。",
         parameters={
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "搜索关键词,例如 '英伟达 上涨 原因'"},
+                "query": {"type": "string", "description": "搜索关键词,例如 'NVDA stock surge reason'"},
             },
             "required": ["query"],
         },
         func=finance.search_news,
+        timeout=20.0,
+        retries=2,
     )
 
-    return Agent(llm=LLM(), tools=tools)
+    # 登记"抓网页"工具:根据搜索到的链接,读取正文以获取细节。
+    tools.register(
+        name="fetch_page",
+        description="抓取一个网页的正文文本。当搜索结果的摘要不够、需要看细节时调用。",
+        parameters={
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "要抓取的网页地址(http/https)"},
+            },
+            "required": ["url"],
+        },
+        func=finance.fetch_page,
+        timeout=15.0,
+        retries=1,
+    )
+
+    # 工具变多了,把最大步数放宽一点,给它更充分的调研空间。
+    return Agent(llm=LLM(), tools=tools, max_steps=8)
 
 
 def print_trajectory(trajectory: list[TrajectoryStep]) -> None:
