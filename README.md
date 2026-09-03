@@ -7,9 +7,23 @@
 
 - **M1(已完成):手写最小 Agent** —— tool registry + 主循环 + Function Calling + Trajectory。
 - **M2(已完成):真实工具 + 可靠性 + Sandbox** —— 行情/搜索/抓网页;重试/超时/降级;SSRF 护栏。
-- M3:RAG(向量库检索历史研报)+ 记忆。
+- **M3(进行中):RAG** —— 三层架构:bge-m3 embedding + Qdrant 向量库 + Postgres 关系库。
 - M4:Eval 评测体系(golden 数据集 + LLM-as-Judge + 回归)。
 - M5:用 LangGraph 重构 + 可观测(日志/指标/trace);把工具改造成 MCP server。
+
+## RAG 三层架构(M3)
+
+```
+① Embedding(rag/embedding.py)  文字 → 向量   用 SiliconFlow bge-m3(维度 1024)
+② 向量库 Qdrant(rag/store.py)  存向量+相似检索  本地 docker,集合 finance_corpus
+③ 关系库 Postgres(rag/db.py)   存原文+去重     本地 docker newsrag 库,表 fra_*
+```
+
+离线建库:`python -m rag.ingest`(读 data/corpus/*.md → 切块 → 向量化 → 入库)
+在线检索:`rag/retrieve.py` 的 `retrieve()`,已注册为 Agent 工具。
+
+依赖本地 docker 的 Qdrant(6333)与 Postgres(5432);Clash 全局代理需放行
+127.0.0.1(代码已用 trust_env=False 绕过)。
 
 ## M1 概念对照表(名词都落在哪)
 

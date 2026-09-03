@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from core.agent import Agent
 from core.llm import LLM
 from core.schema import TrajectoryStep
+from rag.retrieve import retrieve
 from tools import finance
 from tools.registry import ToolRegistry
 
@@ -76,6 +77,24 @@ def build_agent() -> Agent:
         },
         func=finance.fetch_page,
         timeout=15.0,
+        retries=1,
+    )
+
+    # 登记"知识库检索"工具(RAG)。当需要背景知识、公司资料、术语解释时调用。
+    # 对 Agent 来说,RAG 就是又一个平平无奇的工具——这正是解耦的好处。
+    tools.register(
+        name="retrieve",
+        description="从本地知识库按语义检索背景资料(公司背景、行业知识、术语解释等)。需要背景知识时调用。",
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "检索问题,例如 '英伟达的主要业务板块'"},
+                "top_k": {"type": "integer", "description": "返回几段,默认 4"},
+            },
+            "required": ["query"],
+        },
+        func=retrieve,
+        timeout=20.0,
         retries=1,
     )
 
