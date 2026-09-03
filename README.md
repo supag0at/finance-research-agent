@@ -3,6 +3,12 @@
 一个从零手写的财经调研 Agent(学习项目)。目标是不依赖框架,亲手把
 "Agent = LLM 决策 + 工具执行 + 循环"这件事做出来,把每个核心概念都落到代码里。
 
+## 工程复盘 & 高级特性手册
+
+见 [`docs/`](docs/README.md):
+- `docs/troubleshooting/` —— 真实踩过的坑的复盘(现象→排查→根因→解决→面试话术)。
+- `docs/playbook/` —— "问题→高级特性"对照手册(RAG/记忆/评估的进阶方向)。
+
 ## 里程碑规划
 
 - **M1(已完成):手写最小 Agent** —— tool registry + 主循环 + Function Calling + Trajectory。
