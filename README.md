@@ -13,9 +13,9 @@
 
 - **M1(已完成):手写最小 Agent** —— tool registry + 主循环 + Function Calling + Trajectory。
 - **M2(已完成):真实工具 + 可靠性 + Sandbox** —— 行情/搜索/抓网页;重试/超时/降级;SSRF 护栏。
-- **M3(进行中):RAG** —— 三层架构:bge-m3 embedding + Qdrant 向量库 + Postgres 关系库。
+- **M3(已完成):RAG** —— 三层架构:embedding + Qdrant 向量库 + Postgres 关系库。
 - **M3.5(已完成):记忆** —— 短期(上下文压缩)+ 长期(语义记忆,复用 RAG 基建)。
-- M4:Eval 评测体系(golden 数据集 + LLM-as-Judge + 回归)。
+- **M4(已完成):Eval 评测体系** —— 测试集 + 程序化规则检查 + LLM-as-Judge + 报告/回归,见 `eval/`。
 - M5:用 LangGraph 重构 + 可观测(日志/指标/trace);把工具改造成 MCP server。
 
 ## RAG 三层架构(M3)
@@ -39,6 +39,17 @@
 - 长期记忆 `memory/long_term.py`:`remember()` / `recall()`,复用 embedding + Qdrant
   (集合 `fra_memory`)。未配 `EMBED_API_KEY` 时自动降级(不报错)。
 - 高阶技巧留白见 `memory/MEMORY.md`。
+
+## 评测(M4)
+
+`eval/`:给 Agent 建自动化考卷,量化"改动前后变好还是变坏"。
+- `eval/cases.jsonl`:测试集(问题 + 必调工具 + 期望要点,而非标准答案)。
+- `eval/checks.py`:程序化规则检查(工具是否调用、数字是否可溯源、步数),确定不花钱。
+- `eval/judge.py`:LLM-as-Judge,按 rubric 给 accuracy/completeness/faithfulness 打分。
+- `eval/runner.py`:批量跑 → 检查 + 裁判 → 出报告到 `eval/reports/`。
+
+运行:`python -m eval.runner`(或 `python -m eval.runner <用例id>` 只跑指定题)。
+设计说明与首跑发现见 `docs/playbook/eval.md`。
 
 ## M1 概念对照表(名词都落在哪)
 

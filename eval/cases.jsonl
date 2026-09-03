@@ -1,0 +1,5 @@
+{"id": "nvda_perf_01", "question": "帮我分析英伟达(NVDA)最近的股价表现,以及可能的原因。", "must_call_tools": ["get_stock_price"], "expect_points": ["最近一段时间的涨跌幅或价格水平", "至少一条可溯源的原因(如财报/新闻/政策)"], "forbid": ["编造工具未返回的具体数字"]}
+{"id": "tsla_price_01", "question": "特斯拉(TSLA)最近30个交易日的股价怎么样?", "must_call_tools": ["get_stock_price"], "expect_points": ["最新价或涨跌幅", "区间高低点或走势描述"], "forbid": ["编造工具未返回的具体数字"]}
+{"id": "concept_pe_01", "question": "什么是市盈率(PE)?通俗解释一下。", "must_call_tools": ["retrieve"], "expect_points": ["市盈率的定义(价格/每股收益)", "它衡量的是估值/贵不贵"], "forbid": [], "check_number_grounding": false}
+{"id": "nvda_biz_01", "question": "英伟达主要有哪些业务板块?它的护城河是什么?", "must_call_tools": ["retrieve"], "expect_points": ["数据中心/游戏等主要业务板块", "CUDA 生态作为护城河"], "forbid": []}
+{"id": "chip_news_01", "question": "最近 AI 芯片行业有什么值得关注的新闻或动态?", "must_call_tools": ["search_news"], "expect_points": ["至少一条具体的近期新闻/事件", "说明信息来源"], "forbid": ["编造不存在的新闻"]}
