@@ -11,6 +11,12 @@
 
 import os
 
+from dotenv import load_dotenv
+
+# 在读取任何环境变量之前先加载 .env。放在这里可保证:无论谁先 import 到本模块,
+# .env 都已就绪(避免"导入早于 load_dotenv 导致 key 读不到"的时序坑)。
+load_dotenv()
+
 # ① Embedding(SiliconFlow bge-m3)
 EMBED_BASE_URL = os.environ.get("EMBED_BASE_URL", "https://api.siliconflow.cn/v1")
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "BAAI/bge-m3")

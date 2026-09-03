@@ -8,6 +8,7 @@
 - **M1(已完成):手写最小 Agent** —— tool registry + 主循环 + Function Calling + Trajectory。
 - **M2(已完成):真实工具 + 可靠性 + Sandbox** —— 行情/搜索/抓网页;重试/超时/降级;SSRF 护栏。
 - **M3(进行中):RAG** —— 三层架构:bge-m3 embedding + Qdrant 向量库 + Postgres 关系库。
+- **M3.5(已完成):记忆** —— 短期(上下文压缩)+ 长期(语义记忆,复用 RAG 基建)。
 - M4:Eval 评测体系(golden 数据集 + LLM-as-Judge + 回归)。
 - M5:用 LangGraph 重构 + 可观测(日志/指标/trace);把工具改造成 MCP server。
 
@@ -24,6 +25,14 @@
 
 依赖本地 docker 的 Qdrant(6333)与 Postgres(5432);Clash 全局代理需放行
 127.0.0.1(代码已用 trust_env=False 绕过)。
+
+## 记忆(M3.5)
+
+- 短期记忆 `memory/short_term.py`:上下文压缩(工具结果裁剪 + 滑动窗口 + LLM 摘要),
+  在 `core/agent.py` 每次调 LLM 前触发,超过阈值才压缩,且不破坏 assistant→tool 配对。
+- 长期记忆 `memory/long_term.py`:`remember()` / `recall()`,复用 embedding + Qdrant
+  (集合 `fra_memory`)。未配 `EMBED_API_KEY` 时自动降级(不报错)。
+- 高阶技巧留白见 `memory/MEMORY.md`。
 
 ## M1 概念对照表(名词都落在哪)
 

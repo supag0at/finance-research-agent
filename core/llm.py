@@ -11,15 +11,27 @@ base_url / model 不同。
 
 import os
 
+import httpx
+from dotenv import load_dotenv
 from openai import OpenAI
+
+# 保证无论从哪个入口导入本模块,.env 都已被加载进 os.environ。
+# 否则 os.environ.get("LLM_API_KEY") 会拿到空字符串,导致 DeepSeek 报
+# "Authentication Fails (governor)"(看起来像 key 失效,实则 key 根本没读到)。
+load_dotenv()
 
 
 class LLM:
     def __init__(self) -> None:
+        # 关键:trust_env=False 让底层 httpx 忽略系统代理(Windows 上 Clash 全局模式会
+        # 在注册表里设系统代理)。否则请求会被代理转发到境外节点,DeepSeek 判成鉴权
+        # 异常(报 "Authentication Fails (governor)"),即使 key 完全有效也会失败。
+        # 这和 rag/embedding、rag/store 绕代理是同一个原因。
         self.client = OpenAI(
             api_key=os.environ.get("LLM_API_KEY", ""),
             # 默认用 DeepSeek(便宜、工具调用支持好);想换就改环境变量
             base_url=os.environ.get("LLM_BASE_URL", "https://api.deepseek.com/v1"),
+            http_client=httpx.Client(trust_env=False, timeout=60),
         )
         # 注意:deepseek-chat / deepseek-reasoner 这两个旧名字已于 2026/07/24 废弃,
         # 现在应使用 V4 显式名:deepseek-v4-flash(便宜)或 deepseek-v4-pro(旗舰)。
@@ -51,3 +63,14 @@ class LLM:
             extra_body=extra_body,
         )
         return response.choices[0].message
+
+    def complete(self, messages: list[dict]) -> str:
+        """纯文本补全:不带工具,只要模型返回一段文字。
+
+        用于"摘要压缩"这类内部任务(短期记忆里把长历史压成要点)。
+        """
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+        )
+        return response.choices[0].message.content or ""
