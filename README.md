@@ -49,7 +49,9 @@
 - `eval/runner.py`:批量跑 → 检查 + 裁判 → 出报告到 `eval/reports/`。
 
 运行:`python -m eval.runner`(或 `python -m eval.runner <用例id>` 只跑指定题)。
-设计说明与首跑发现见 `docs/playbook/eval.md`。
+
+- 实现讲解 / 怎么加题 / 怎么读报告:`eval/EVAL.md`
+- 设计理念与首跑发现:`docs/playbook/eval.md`
 
 ## M1 概念对照表(名词都落在哪)
 
