@@ -30,6 +30,14 @@ from main import build_agent
 # ---- PASS 阈值(可按需调整)----
 MIN_FAITHFULNESS = 4  # 忠实度(反编造)至少 4/5
 MIN_GROUNDED_RATIO = 0.6  # 回答里的数字至少 60% 能在工具返回里找到出处
+MIN_ACCURACY = 3  # 准确性至少 3/5
+MIN_COMPLETENESS = 3  # 完整性至少 3/5
+# 为什么要卡 accuracy/completeness?
+# M5 对照实验时发现:Agent 撞到步数上限、交出一个近乎空的答案(acc=1 comp=1),
+# 竟然 PASS 了 —— 因为空答案什么都没编,faithfulness 反而满分 5。
+# 这和我们在 docs/notes/2026-09-09-评测方法论调研.md 里批评 τ-bench "空回复算成功"
+# 是同一个 bug,只不过出现在自己家里。教训:**只卡"不犯错"的维度,会奖励什么都不做。**
+# 必须同时卡"有没有把事办成"的维度。
 
 _CASES_PATH = Path(__file__).parent / "cases.jsonl"
 _REPORTS_DIR = Path(__file__).parent / "reports"
@@ -48,6 +56,8 @@ def is_pass(case: dict, checks: dict, judged: dict) -> bool:
     ok = (
         checks["tool_ok"]
         and judged.get("faithfulness", 0) >= MIN_FAITHFULNESS
+        and judged.get("accuracy", 0) >= MIN_ACCURACY
+        and judged.get("completeness", 0) >= MIN_COMPLETENESS
     )
     # 概念解释题里的举例数字不是"事实",不该用数字溯源当硬门槛。
     # 用例可显式关闭该门槛(check_number_grounding=false)。
@@ -106,6 +116,7 @@ def render_markdown(summary: dict, results: list[dict], stamp: str) -> str:
     lines = [
         f"# 评测报告 {stamp}",
         "",
+        f"- 被测实现:**{summary.get('impl', 'handwritten')}**",
         f"- 用例数:{summary['total']}  通过:{summary['passed']}  "
         f"**通过率:{summary['pass_rate'] * 100:.0f}%**",
         f"- 平均分:accuracy {summary['avg_accuracy']} | "
@@ -155,17 +166,32 @@ def main() -> None:
 
     load_dotenv()
 
-    agent = build_agent()
+    args = set(sys.argv[1:])
+
+    # --graph:评测 LangGraph 版(M5)而非手写版。两者接口相同,评测代码无需改动,
+    # 因此可以用同一套用例做重构前后的回归对比。
+    use_graph = "--graph" in args
+    args.discard("--graph")
+
+    if use_graph:
+        from graph.agent import GraphAgent
+
+        agent = GraphAgent()
+        impl = "langgraph"
+    else:
+        agent = build_agent()
+        impl = "handwritten"
+
     # 评测时不写长期记忆,保持干净、可复现。
     agent.use_long_term = False
     judge_llm = LLM()
 
     cases = load_cases()
     # 支持只跑指定用例(命令行传用例 id),方便快速迭代,不必每次全量跑。
-    only = set(sys.argv[1:])
+    only = args
     if only:
         cases = [c for c in cases if c["id"] in only]
-    print(f"载入 {len(cases)} 个用例,开始评测...\n")
+    print(f"载入 {len(cases)} 个用例,被测实现:{impl},开始评测...\n")
 
     results = []
     for i, case in enumerate(cases, 1):
@@ -182,6 +208,7 @@ def main() -> None:
         results.append(r)
 
     summary = summarize(results)
+    summary["impl"] = impl  # 记录被测实现,回归对比时必须知道跑的是哪一版
 
     _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")

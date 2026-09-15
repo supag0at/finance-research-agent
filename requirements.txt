@@ -4,3 +4,9 @@ ddgs>=6.0
 beautifulsoup4>=4.12.0
 httpx>=0.27.0
 psycopg[binary]>=3.1
+
+# M5:LangGraph 重构。手写版(core/agent.py)不依赖它们,仍可独立运行。
+langgraph>=1.2,<2
+langchain-openai>=1.6,<2
+# 可选:只用于在终端把图画成 ASCII(main_graph.py)。没装会自动退回 Mermaid 文本。
+grandalf>=0.8

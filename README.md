@@ -16,7 +16,9 @@
 - **M3(已完成):RAG** —— 三层架构:embedding + Qdrant 向量库 + Postgres 关系库。
 - **M3.5(已完成):记忆** —— 短期(上下文压缩)+ 长期(语义记忆,复用 RAG 基建)。
 - **M4(已完成):Eval 评测体系** —— 测试集 + 程序化规则检查 + LLM-as-Judge + 报告/回归,见 `eval/`。
-- M5:用 LangGraph 重构 + 可观测(日志/指标/trace);把工具改造成 MCP server。
+- **M5.1(已完成):LangGraph 重构** —— 手写主循环换成显式的图,白拿续话/并行/可视化,见 `graph/`。
+- M5.2:可观测(日志/指标/trace)。
+- M5.3:把工具改造成 MCP server。
 
 ## RAG 三层架构(M3)
 
@@ -48,10 +50,34 @@
 - `eval/judge.py`:LLM-as-Judge,按 rubric 给 accuracy/completeness/faithfulness 打分。
 - `eval/runner.py`:批量跑 → 检查 + 裁判 → 出报告到 `eval/reports/`。
 
-运行:`python -m eval.runner`(或 `python -m eval.runner <用例id>` 只跑指定题)。
+运行:`python -m eval.runner`(或 `python -m eval.runner <用例id>` 只跑指定题;
+加 `--graph` 则评测 M5 的图版实现)。
 
 - 实现讲解 / 怎么加题 / 怎么读报告:`eval/EVAL.md`
 - 设计理念与首跑发现:`docs/playbook/eval.md`
+
+## LangGraph 重构(M5.1)
+
+`graph/`:把手写的 Agent 主循环换成 LangGraph 的显式图。**业务逻辑一行没改**,
+换掉的只是骨架;`core/agent.py` 手写版**刻意保留**作为对照实现。
+
+```
+START → recall → compress → plan ─┬─(有工具调用)→ act ─┐
+                     ↑            │                    │
+                     └────────────┴────────────────────┘
+                                  └─(无工具调用)→ remember → END
+```
+
+- `graph/state.py` 状态定义 / `graph/nodes.py` 四个节点 / `graph/build.py` 组图
+- `graph/agent.py` 的 `GraphAgent` 与手写版**接口完全一致**,所以整套评测不用改就能跑图版
+
+运行:`python main_graph.py`(会先打印图结构,跑一轮,再演示同 `thread_id` 续话)。
+
+比手写版多出来的能力:续接对话(checkpointer)、工具并行执行(ToolNode)、
+控制流可视化、每步状态可回放。
+
+- 模块讲解与设计取舍:`graph/GRAPH.md`
+- 为什么要做这次重构:`docs/design/M5-LangGraph重构.md`
 
 ## M1 概念对照表(名词都落在哪)
 
