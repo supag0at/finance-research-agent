@@ -74,6 +74,7 @@ def _reliable_tool(
             timeout=timeout,
             retries=retries,
             fallback=fallback,
+            name=name,  # 观测用:和 LangChain 注册的工具名保持一致
         )
         # 统一转成字符串,和手写版 registry.call() 的行为一致。
         return str(result)

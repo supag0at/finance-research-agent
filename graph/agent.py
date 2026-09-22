@@ -17,6 +17,8 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.errors import GraphRecursionError
 
 from core.schema import ToolCall, TrajectoryStep
+from obs.callbacks import ObsHandler
+from obs.metrics import RunRecord
 
 # 与手写版 max_steps=8 大致等价:一圈是 compress+plan(+act),
 # 加上首尾的 recall/remember,8 圈约需 25 个 superstep,这里留些余量。
@@ -32,12 +34,15 @@ class GraphAgent:
         use_long_term: bool = True,
         recursion_limit: int = DEFAULT_RECURSION_LIMIT,
         checkpointer: Optional[object] = None,
+        print_obs: bool = True,
     ) -> None:
         self.use_short_term = use_short_term
         self.use_long_term = use_long_term
         self.recursion_limit = recursion_limit
+        self.print_obs = print_obs  # 跑完是否打印一行观测摘要
         self._checkpointer = checkpointer
         self._graph = None  # 延迟构建
+        self.last_run: Optional[RunRecord] = None  # 最近一次运行的观测汇总
 
     @property
     def graph(self):
@@ -64,26 +69,39 @@ class GraphAgent:
         thread_id:
             不传则每次用一个新的随机 id(相互隔离,适合评测);
             传同一个 id 则会**接上该会话之前的状态**(checkpointer 的能力)。
+
+        副产品:本次运行的观测汇总会挂在 self.last_run 上(供评测收集成本/耗时)。
         """
+        tid = thread_id or str(uuid.uuid4())
+        handler = ObsHandler(question=question, impl="langgraph", thread_id=tid)
         config = {
-            "configurable": {"thread_id": thread_id or str(uuid.uuid4())},
+            "configurable": {"thread_id": tid},
             "recursion_limit": self.recursion_limit,
+            # 观测就挂在这里。业务代码(nodes.py)完全不知道它的存在。
+            "callbacks": [handler],
         }
 
+        handler.start()
+        hit_limit = False
         try:
             final_state = self.graph.invoke({"question": question}, config)
             messages = final_state["messages"]
         except GraphRecursionError:
             # 撞到步数上限。取出已有状态,行为与手写版保持一致:给一句兜底说明。
+            hit_limit = True
             snapshot = self.graph.get_state(config)
             messages = snapshot.values.get("messages", []) if snapshot else []
-            return MAX_STEPS_MESSAGE, _to_trajectory(messages)
-
-        answer = ""
-        for msg in reversed(messages):
-            if isinstance(msg, AIMessage) and msg.content:
-                answer = msg.content if isinstance(msg.content, str) else str(msg.content)
-                break
+            answer = MAX_STEPS_MESSAGE
+        else:
+            answer = ""
+            for msg in reversed(messages):
+                if isinstance(msg, AIMessage) and msg.content:
+                    answer = msg.content if isinstance(msg.content, str) else str(msg.content)
+                    break
+        finally:
+            self.last_run = handler.finish(hit_limit=hit_limit)
+            if self.print_obs:
+                print(self.last_run.summary_line(), flush=True)
 
         return answer, _to_trajectory(messages)
 

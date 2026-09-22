@@ -77,5 +77,6 @@ class ToolRegistry:
             timeout=tool["timeout"],
             retries=tool["retries"],
             fallback=tool["fallback"],
+            name=name,  # 观测用:统一以注册名标识工具
         )
         return str(result)

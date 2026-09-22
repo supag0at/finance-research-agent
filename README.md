@@ -17,7 +17,8 @@
 - **M3.5(已完成):记忆** —— 短期(上下文压缩)+ 长期(语义记忆,复用 RAG 基建)。
 - **M4(已完成):Eval 评测体系** —— 测试集 + 程序化规则检查 + LLM-as-Judge + 报告/回归,见 `eval/`。
 - **M5.1(已完成):LangGraph 重构** —— 手写主循环换成显式的图,白拿续话/并行/可视化,见 `graph/`。
-- M5.2:可观测(日志/指标/trace)。
+- **M5.2.1(已完成):自建观测层** —— 每次运行的耗时/token/成本/节点/工具落 JSONL,见 `obs/`。
+- M5.2.2 / M5.2.3:接 OpenTelemetry + Phoenix 看瀑布图;把观测数据并入评测报告。
 - M5.3:把工具改造成 MCP server。
 
 ## RAG 三层架构(M3)
@@ -78,6 +79,25 @@ START → recall → compress → plan ─┬─(有工具调用)→ act ─┐
 
 - 模块讲解与设计取舍:`graph/GRAPH.md`
 - 为什么要做这次重构:`docs/design/M5-LangGraph重构.md`
+
+## 可观测(M5.2.1)
+
+`obs/`:挂在 LangGraph 的 `config["callbacks"]` 上自动采集,**业务代码零改动**。
+每次调研会打一行摘要,并把逐条事件(Logs)和运行汇总(Metrics)写进 `obs/runs/`。
+
+```
+[obs] run=42216156 19.1s | LLM 4次 (in 4694/缓存3200, out 546) ¥未配单价 |
+      工具 6次 | plan=9.3s act=7.2s compress=0.0s ⚠️ 撞上限/工具失败4/重试12
+```
+
+- `obs/callbacks.py` 采集 / `obs/metrics.py` 聚合+成本 / `obs/logger.py` 落盘+脱敏
+- 成本按**缓存命中分档**计算(实测一次请求 691 个输入 token 里 512 个是缓存命中);
+  单价从 `.env` 读,没配就显示"未配单价"而不是假装是 0
+- 内容原文**默认不记**,要记得显式开 `OBS_CONTENT=1`
+
+- 模块讲解、指标怎么读、坑在哪:`obs/OBS.md`
+- 设计与选型:`docs/design/M5.2-可观测性.md`
+- 踩坑复盘:`docs/troubleshooting/03-可观测性.md`
 
 ## M1 概念对照表(名词都落在哪)
 

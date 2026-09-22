@@ -41,6 +41,23 @@ class LLM:
         # reasoning_content 字段里。设环境变量 LLM_THINKING=1 即可开启。
         self.thinking = os.environ.get("LLM_THINKING", "").lower() in ("1", "true", "yes")
 
+    @staticmethod
+    def _message_of(response, where: str):
+        """从响应里取出消息,并对"空响应"给出可诊断的报错。
+
+        为什么需要这个?M5.2 加上可观测之后,故意让工具持续失败跑了一轮,
+        `complete()` 收到了 None 响应,直接 `response.choices` 抛
+        AttributeError: 'NoneType' object has no attribute 'choices' ——
+        报错信息完全看不出发生了什么。这里把上下文补齐,便于下次定位。
+        """
+        if response is None or not getattr(response, "choices", None):
+            raise RuntimeError(
+                f"{where}:模型返回空响应(response={response!r})。"
+                "常见原因:输入超出上下文上限、被内容过滤拦截、"
+                "或上游返回了非标准错误体。"
+            )
+        return response.choices[0].message
+
     def chat(self, messages: list[dict], tools: list[dict]):
         """发一轮对话给模型,返回模型的回复消息。
 
@@ -62,7 +79,7 @@ class LLM:
             tool_choice="auto",  # 让模型自己决定:要不要调工具、调哪个
             extra_body=extra_body,
         )
-        return response.choices[0].message
+        return self._message_of(response, "LLM.chat")
 
     def complete(self, messages: list[dict]) -> str:
         """纯文本补全:不带工具,只要模型返回一段文字。
@@ -73,4 +90,4 @@ class LLM:
             model=self.model,
             messages=messages,
         )
-        return response.choices[0].message.content or ""
+        return self._message_of(response, "LLM.complete").content or ""

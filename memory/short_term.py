@@ -102,7 +102,13 @@ def compress_messages(
     if system_msg:
         result.append(system_msg)
 
-    summary = summarize_history(llm, old) if llm is not None else "(历史较长已省略)"
+    # 摘要要调一次 LLM,是会失败的(实测:工具持续失败导致历史暴涨后,
+    # 摘要请求收到空响应)。摘要失败不该让整轮调研崩掉 —— 和长期记忆一样,
+    # 记忆是锦上添花,不该阻断主流程。所以降级成"省略历史"继续跑。
+    try:
+        summary = summarize_history(llm, old) if llm is not None else "(历史较长已省略)"
+    except Exception as exc:  # noqa: BLE001
+        summary = f"(历史较长,且摘要生成失败:{type(exc).__name__},此处已省略)"
     result.append({"role": "system", "content": "【之前调研历史的摘要】\n" + summary})
     result.extend(recent)
 
