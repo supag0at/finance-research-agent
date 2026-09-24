@@ -17,6 +17,7 @@
 import json
 import sys
 import time
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -83,6 +84,17 @@ def evaluate_one(agent, judge_llm: LLM, case: dict) -> dict:
         facts=facts,
     )
 
+    # M5.2.3:把这一题的观测汇总一起收进来,报告里就能在"答得好不好"旁边
+    # 写上"花了多少、慢在哪"。
+    #
+    # 只有图版有 last_run —— 手写版 core/agent.py 不走 LangChain 回调,拿不到。
+    # 这个差异本身就是"框架给了什么"的一个具体答案,所以不强行补齐,老实留空。
+    #
+    # 注意这里统计的**只是被测 Agent 的开销**,不含 LLM 裁判。
+    # 裁判是"考试的成本"不是"被测对象的成本",混在一起的话,
+    # 改一次裁判 prompt 就会让 Agent 看起来变贵了。
+    rec = getattr(agent, "last_run", None)
+
     return {
         "id": case["id"],
         "question": case["question"],
@@ -91,11 +103,70 @@ def evaluate_one(agent, judge_llm: LLM, case: dict) -> dict:
         "checks": checks,
         "judge": judged,
         "passed": is_pass(case, checks, judged),
+        "obs": rec.to_json() if rec is not None else None,
     }
 
 
 def _avg(nums: list[float]) -> float:
     return round(sum(nums) / len(nums), 2) if nums else 0.0
+
+
+def summarize_cost(results: list[dict]) -> dict | None:
+    """把逐题的观测数据聚合成"这一轮评测花了多少代价"。
+
+    没有任何一题带观测(比如跑的是手写版)时返回 None,报告里整段略过 ——
+    宁可不显示,也不要显示一堆 0 让人误以为"这版不花钱"。
+    """
+    obs_list = [r["obs"] for r in results if r.get("obs")]
+    if not obs_list:
+        return None
+
+    n = len(obs_list)
+    llm = [o["llm"] for o in obs_list]
+
+    # 成本:只要有一题算不出(没配单价),整轮就是"未配单价"。
+    # 把能算的几题加起来当总数是错的,那个数没有意义。
+    costs = [o.get("cost_cny") for o in obs_list]
+    total_cost = None if any(c is None for c in costs) else round(sum(costs), 6)
+
+    tool_calls = tool_fails = tool_retries = 0
+    for o in obs_list:
+        for st in (o.get("tools") or {}).values():
+            tool_calls += st["count"]
+            tool_fails += st["fail"]
+            tool_retries += st["retry"]
+
+    # 各节点耗时占比:这一行最有用 —— 它直接指出下一步优化该砍哪。
+    node_ms: dict[str, float] = defaultdict(float)
+    for o in obs_list:
+        for name, st in (o.get("nodes") or {}).items():
+            node_ms[name] += st["total_ms"]
+    total_node_ms = sum(node_ms.values())
+    node_share = {
+        name: round(ms / total_node_ms, 3)
+        for name, ms in sorted(node_ms.items(), key=lambda kv: -kv[1])
+    } if total_node_ms else {}
+
+    return {
+        "cases_with_obs": n,
+        "avg_llm_calls": round(sum(x["calls"] for x in llm) / n, 1),
+        "avg_prompt_tokens": round(sum(x["prompt_tokens"] for x in llm) / n),
+        "avg_cached_tokens": round(sum(x["cached_tokens"] for x in llm) / n),
+        "avg_completion_tokens": round(sum(x["completion_tokens"] for x in llm) / n),
+        "avg_reasoning_tokens": round(sum(x["reasoning_tokens"] for x in llm) / n),
+        "total_cost_cny": total_cost,
+        "avg_cost_cny": None if total_cost is None else round(total_cost / n, 6),
+        "tool_calls": tool_calls,
+        "tool_fails": tool_fails,
+        "tool_fail_rate": round(tool_fails / tool_calls, 3) if tool_calls else 0.0,
+        "tool_retries": tool_retries,
+        "hit_limit": sum(1 for o in obs_list if o.get("hit_limit")),
+        "node_time_share": node_share,
+        # 记下模型名:回归对比时必须知道"这份成绩是哪个模型跑的"。
+        # 请求名和返回名可能不一样(旧名已下线、由新模型代服务),两个都留。
+        "model_requested": llm[0].get("model_requested", ""),
+        "model_returned": llm[0].get("model_returned", ""),
+    }
 
 
 def summarize(results: list[dict]) -> dict:
@@ -109,7 +180,63 @@ def summarize(results: list[dict]) -> dict:
         "avg_faithfulness": _avg([r["judge"].get("faithfulness", 0) for r in results]),
         "avg_grounded_ratio": _avg([r["checks"]["grounded_ratio"] for r in results]),
         "avg_elapsed_s": _avg([r["elapsed_s"] for r in results]),
+        "cost": summarize_cost(results),
     }
+
+
+def _fmt_cost(value: float | None) -> str:
+    """没配单价就老实说"未配单价",不拿 0 充数 —— 区分"免费"和"不知道"。"""
+    return "未配单价" if value is None else f"¥{value:.4f}"
+
+
+def _slowest_node(obs: dict) -> str:
+    nodes = obs.get("nodes") or {}
+    if not nodes:
+        return "-"
+    name, st = max(nodes.items(), key=lambda kv: kv[1]["total_ms"])
+    return f"{name} {st['total_ms'] / 1000:.1f}s"
+
+
+def _tool_brief(obs: dict) -> str:
+    tools = obs.get("tools") or {}
+    calls = sum(st["count"] for st in tools.values())
+    fails = sum(st["fail"] for st in tools.values())
+    retries = sum(st["retry"] for st in tools.values())
+    return f"{calls} ({fails}/{retries})"
+
+
+def render_cost_section(cost: dict | None) -> list[str]:
+    """报告里的"代价"段。质量回答"答得好不好",这一段回答"花了多少、慢在哪"。"""
+    if not cost:
+        return [
+            "",
+            "## 代价",
+            "",
+            "- 本轮没有观测数据(手写版不走 LangChain 回调,拿不到 token/成本)。",
+        ]
+
+    share = " | ".join(
+        f"{name} {pct * 100:.1f}%" for name, pct in cost["node_time_share"].items()
+    )
+    model = cost["model_requested"]
+    if cost["model_returned"] and cost["model_returned"] != model:
+        model += f" → 实际 {cost['model_returned']}"
+
+    return [
+        "",
+        "## 代价(观测层数据,不含裁判开销)",
+        "",
+        f"- 模型:{model}",
+        f"- 平均每题:LLM {cost['avg_llm_calls']} 次 | "
+        f"输入 {cost['avg_prompt_tokens']}(其中缓存命中 {cost['avg_cached_tokens']})| "
+        f"输出 {cost['avg_completion_tokens']}(其中思考 {cost['avg_reasoning_tokens']})",
+        f"- 成本:总计 {_fmt_cost(cost['total_cost_cny'])},"
+        f"平均每题 {_fmt_cost(cost['avg_cost_cny'])}",
+        f"- 工具:共 {cost['tool_calls']} 次,失败 {cost['tool_fails']} 次"
+        f"({cost['tool_fail_rate'] * 100:.1f}%),重试 {cost['tool_retries']} 次",
+        f"- 撞步数上限:{cost['hit_limit']}/{cost['cases_with_obs']} 题",
+        f"- 耗时构成:{share or '-'}",
+    ]
 
 
 def render_markdown(summary: dict, results: list[dict], stamp: str) -> str:
@@ -127,17 +254,44 @@ def render_markdown(summary: dict, results: list[dict], stamp: str) -> str:
         "",
         "## 逐题结果",
         "",
-        "| 用例 | 通过 | acc | comp | faith | 溯源 | 工具 | 步数 | 耗时 |",
+        "| 用例 | 通过 | acc | comp | faith | 溯源 | 用到的工具 | 步数 | 耗时 |",
         "| --- | :-: | :-: | :-: | :-: | :-: | --- | :-: | :-: |",
     ]
     for r in results:
         c, j = r["checks"], r["judge"]
+        # 只列**去重后**的工具名。之前是把调用序列整个铺开,一道跑偏的题能列出
+        # 38 个名字,把表格撑得没法看。具体次数看下面的代价表。
+        used = list(dict.fromkeys(c["tools_used"]))
         lines.append(
             f"| {r['id']} | {'✅' if r['passed'] else '❌'} | "
             f"{j.get('accuracy', 0)} | {j.get('completeness', 0)} | "
             f"{j.get('faithfulness', 0)} | {c['grounded_ratio']} | "
-            f"{','.join(c['tools_used']) or '-'} | {c['max_step']} | {r['elapsed_s']}s |"
+            f"{','.join(used) or '-'} | {c['max_step']} | {r['elapsed_s']}s |"
         )
+
+    lines += render_cost_section(summary.get("cost"))
+
+    if summary.get("cost"):
+        lines += [
+            "",
+            "## 逐题代价",
+            "",
+            "| 用例 | LLM | 输入(缓存) | 输出 | 成本 | 工具(失败/重试) | 最慢节点 | 撞上限 |",
+            "| --- | :-: | :-: | :-: | :-: | :-: | --- | :-: |",
+        ]
+        for r in results:
+            o = r.get("obs")
+            if not o:
+                lines.append(f"| {r['id']} | - | - | - | - | - | - | - |")
+                continue
+            m = o["llm"]
+            lines.append(
+                f"| {r['id']} | {m['calls']} | "
+                f"{m['prompt_tokens']}({m['cached_tokens']}) | "
+                f"{m['completion_tokens']} | {_fmt_cost(o.get('cost_cny'))} | "
+                f"{_tool_brief(o)} | {_slowest_node(o)} | "
+                f"{'是' if o.get('hit_limit') else '-'} |"
+            )
 
     # 失败/异常用例的详情,方便定位
     problems = [r for r in results if not r["passed"] or r["judge"].get("error")]
