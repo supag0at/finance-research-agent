@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 
 from graph.agent import GraphAgent
 from main import print_trajectory
+from obs.tracing import setup_tracing, shutdown_tracing
 
 
 def draw_graph(graph) -> str:
@@ -40,6 +41,11 @@ def main() -> None:
         pass
 
     load_dotenv()
+
+    # 可观测第二层:设 OBS_TRACING=1 就把链路发给本地 Phoenix 看瀑布图。
+    # 没开或没装依赖时这行什么都不做,所以放在这里是安全的。
+    setup_tracing()
+
     agent = GraphAgent()
 
     # ---- 能力 1:控制流可视化。手写版的循环藏在代码里,图版可以直接画出来 ----
@@ -71,6 +77,10 @@ def main() -> None:
 
     answer2, _ = agent.run(follow_up, thread_id=thread)
     print(f"\n回答: {answer2}")
+
+    # 把攒着的 span 推出去。BatchSpanProcessor 是异步攒批的,
+    # 进程退出太快会丢掉最后几个 span(atexit 里也注册了,这里显式再调一次更稳)。
+    shutdown_tracing()
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@
 > 本文档:代码怎么组织、指标怎么读、坑在哪
 
 M5.2.1 做的是**第一层:零外部依赖的自建观测**。
-第二层(OTel + Phoenix)是 M5.2.2,用环境变量开关,不装也能跑。
+M5.2.2 做的是**第二层:OTel + Phoenix 瀑布图**,用环境变量开关,不装/不开都能跑。
 
 ---
 
@@ -36,7 +36,7 @@ M5.2.1 做的是**第一层:零外部依赖的自建观测**。
 | `callbacks.py` | `ObsHandler`:挂在 callbacks 上采集事件 | 采集层(三根都靠它) |
 | `metrics.py` | `RunRecord`:聚合成数值 + 成本估算 | **Metrics** |
 | `logger.py` | 结构化落盘 + 脱敏 | **Logs** |
-| `tracing.py` | OTel/Phoenix 接入(M5.2.2 待建) | **Traces** |
+| `tracing.py` | OTel + Phoenix 开关式接入 | **Traces** |
 | `runs/` | 产物目录(git 忽略) | — |
 
 ---
@@ -195,6 +195,9 @@ act 墙钟 = 2837ms      各工具耗时之和 = 4789ms
 | --- | --- | --- |
 | `OBS` | 总开关,`0` 关闭落盘 | 开 |
 | `OBS_CONTENT` | 是否记录内容原文 | **关**(只记长度) |
+| `OBS_TRACING` | 是否把链路发给 Phoenix | **关** |
+| `OBS_TRACING_ENDPOINT` | OTLP HTTP 入口 | `http://127.0.0.1:6006/v1/traces` |
+| `OBS_TRACE_CONTENT` | trace 里要不要带 prompt 原文 | **开**(和 JSONL 相反,见下) |
 | `LLM_PRICE_IN` / `LLM_PRICE_CACHE_IN` / `LLM_PRICE_OUT` | 单价 | 空(不算成本) |
 
 `print_obs=False` 可以构造一个不打印摘要的 agent:`GraphAgent(print_obs=False)`。
@@ -232,5 +235,76 @@ M5.2.1 刚跑通就做了个压力实验(故意让 `search_news` 每次都抛异
   想给它加就得手写埋点——这本身就是"框架带来了什么"的一个具体答案。
 - **P95 之类的分位数还没算。** 目前只有 count / total / max,分位数要跨运行聚合,
   等 `runs-*.jsonl` 攒够了再做。
-- **Traces 还是文本。** 瀑布图看 M5.2.2。
 - **还没进评测报告。** M5.2.3 做。
+
+---
+
+## 十、M5.2.2:怎么看瀑布图
+
+### 怎么开
+
+```bash
+# 1. 起 Phoenix(一次即可,和 Qdrant/Postgres 一样走 Docker)
+docker run -d --name fra-phoenix -p 6006:6006 -p 4317:4317 arizephoenix/phoenix:latest
+
+# 2. .env 里设
+OBS_TRACING=1
+
+# 3. 跑一轮
+python main_graph.py
+# 或任何走 GraphAgent 的入口(eval --graph 也行)
+
+# 4. 浏览器打开
+http://127.0.0.1:6006
+```
+
+`GraphAgent.run()` 会自动调 `setup_tracing()`(幂等)。没开开关或没装依赖时静默跳过。
+
+### 实测一条短问题长什么样(2026-09-23)
+
+问"什么是市盈率?用两句话解释。",6.3 秒,Phoenix 里是一棵 13 个 span 的树:
+
+```
+LangGraph                          3.55s
+├─ recall
+├─ compress
+├─ plan
+│  ├─ ChatOpenAI                   (prompt 1579 / 缓存 768 / out 102)
+│  └─ should_continue              ← 条件边,也会出 span,这是正常的
+├─ act
+│  └─ retrieve
+├─ compress
+├─ plan
+│  ├─ ChatOpenAI
+│  └─ should_continue
+└─ remember
+```
+
+父子关系完整,没有"span 孤儿"(第二圈的 `plan` 仍然挂在同一棵 `LangGraph` 下)。
+这就是走 `LangChainInstrumentor`(回调)而不是手写 OTel span 的收益。
+
+### 读瀑布图时三个容易误会的点
+
+**1. `should_continue` 会出现在树上。**
+我们自己的 `ObsHandler` 用 `graph:step:` 这个 tag 把它滤掉了,所以摘要行里 `plan` 次数 = LLM 次数。
+Phoenix 不过滤——条件边在框架内部也是一个 Runnable,它就是有自己的 span。
+**别拿 Phoenix 的 `plan` 次数去对摘要行**,要对的是 `ChatOpenAI` 次数。
+
+**2. Phoenix 里成本是 `$0`。**
+它按模型名查自己的价格表,DeepSeek 不在表里。成本以我们自己的 `RunRecord.cost()` 为准
+(单价从 `.env` 读、区分缓存命中)。两边数字对不上不是 bug。
+
+**3. JSONL 默认不记原文,Phoenix 默认记。**
+这是有意的。JSONL 落在仓库目录里会长期堆积;Phoenix 跑在本机容器里、重启即失,
+而且"点开某一步看当时的 prompt"恰恰是瀑布图存在的意义。要收紧设 `OBS_TRACE_CONTENT=0`。
+
+### 接线时踩过的坑(第三次代理问题)
+
+OTLP HTTP exporter 内部用的是 `requests`,而 `requests` 默认读系统代理。
+Clash 开着全局代理时,连 `127.0.0.1:6006` 都会被劫走,span 发出去了 Phoenix 却收不到。
+这和 Qdrant / DeepSeek 是同一个问题的第三次出现。
+`obs/tracing.py` 里已经用 `session.trust_env = False` 绕过。
+
+另一个容易踩的:BatchSpanProcessor **是异步攒批的**。进程退出太快,末尾几个 span 会丢,
+瀑布图缺最后几步,看起来像埋点没生效。`GraphAgent.run()` 结束时会 `flush_tracing()`,
+`main_graph.py` 退出前还会 `shutdown_tracing()`。

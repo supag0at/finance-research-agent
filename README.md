@@ -18,7 +18,8 @@
 - **M4(已完成):Eval 评测体系** —— 测试集 + 程序化规则检查 + LLM-as-Judge + 报告/回归,见 `eval/`。
 - **M5.1(已完成):LangGraph 重构** —— 手写主循环换成显式的图,白拿续话/并行/可视化,见 `graph/`。
 - **M5.2.1(已完成):自建观测层** —— 每次运行的耗时/token/成本/节点/工具落 JSONL,见 `obs/`。
-- M5.2.2 / M5.2.3:接 OpenTelemetry + Phoenix 看瀑布图;把观测数据并入评测报告。
+- **M5.2.2(已完成):OTel + Phoenix** —— 开关式接线,本地看瀑布图。
+- M5.2.3:把观测数据并入评测报告。
 - M5.3:把工具改造成 MCP server。
 
 ## RAG 三层架构(M3)
@@ -94,6 +95,9 @@ START → recall → compress → plan ─┬─(有工具调用)→ act ─┐
 - 成本按**缓存命中分档**计算(实测一次请求 691 个输入 token 里 512 个是缓存命中);
   单价从 `.env` 读,没配就显示"未配单价"而不是假装是 0
 - 内容原文**默认不记**,要记得显式开 `OBS_CONTENT=1`
+- 瀑布图(可选):`.env` 设 `OBS_TRACING=1`,先起
+  `docker run -d --name fra-phoenix -p 6006:6006 -p 4317:4317 arizephoenix/phoenix:latest`,
+  然后打开 http://127.0.0.1:6006
 
 - 模块讲解、指标怎么读、坑在哪:`obs/OBS.md`
 - 设计与选型:`docs/design/M5.2-可观测性.md`

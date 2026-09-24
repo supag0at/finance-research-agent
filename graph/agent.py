@@ -19,6 +19,7 @@ from langgraph.errors import GraphRecursionError
 from core.schema import ToolCall, TrajectoryStep
 from obs.callbacks import ObsHandler
 from obs.metrics import RunRecord
+from obs.tracing import flush_tracing, setup_tracing
 
 # 与手写版 max_steps=8 大致等价:一圈是 compress+plan(+act),
 # 加上首尾的 recall/remember,8 圈约需 25 个 superstep,这里留些余量。
@@ -72,6 +73,10 @@ class GraphAgent:
 
         副产品:本次运行的观测汇总会挂在 self.last_run 上(供评测收集成本/耗时)。
         """
+        # 开关式接线:没开 OBS_TRACING 或没装依赖时这行什么都不做。
+        # 幂等,main_graph.py / eval 里重复调也安全。
+        setup_tracing()
+
         tid = thread_id or str(uuid.uuid4())
         handler = ObsHandler(question=question, impl="langgraph", thread_id=tid)
         config = {
@@ -102,6 +107,8 @@ class GraphAgent:
             self.last_run = handler.finish(hit_limit=hit_limit)
             if self.print_obs:
                 print(self.last_run.summary_line(), flush=True)
+            # BatchSpanProcessor 是异步攒批的,不 flush 的话刚跑完去 Phoenix 会看不到。
+            flush_tracing()
 
         return answer, _to_trajectory(messages)
 
