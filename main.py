@@ -15,13 +15,8 @@ from core.llm import LLM
 from core.schema import TrajectoryStep
 from rag.retrieve import retrieve
 from tools import finance
+from tools.fallbacks import stock_fallback as _stock_fallback
 from tools.registry import ToolRegistry
-
-
-def _stock_fallback(symbol: str = "", days: int = 30) -> dict:
-    """行情工具的降级兜底:真实接口失败时,至少告诉模型"数据暂不可用",
-    而不是让流程崩掉。模型看到这个,会知道不要编造数字。"""
-    return {"symbol": symbol, "error": "行情数据暂时不可用,请勿编造数字。"}
 
 
 def build_agent() -> Agent:

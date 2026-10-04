@@ -18,3 +18,8 @@ grandalf>=0.8
 openinference-instrumentation-langchain>=0.1.70
 opentelemetry-sdk>=1.44,<2
 opentelemetry-exporter-otlp-proto-http>=1.44,<2
+
+# M5.3:MCP 化。默认不启用(MCP_TOOLS 留空),不装也能跑。
+# mcp 是官方 Python SDK(含 FastMCP);adapters 负责把 MCP 工具转成 LangChain 工具。
+mcp>=1.30
+langchain-mcp-adapters>=0.3

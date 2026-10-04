@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from core.reliability import run_reliably
 from rag.retrieve import retrieve
 from tools import finance
+from tools.fallbacks import stock_fallback
 
 
 # ---------- 参数 schema(对应手写版 registry.register 里的 parameters) ----------
@@ -49,11 +50,6 @@ class RetrieveArgs(BaseModel):
 
 
 # ---------- 可靠性包装 ----------
-
-
-def _stock_fallback(symbol: str = "", days: int = 30) -> dict:
-    """行情工具的降级兜底(与 main.py 保持一致)。"""
-    return {"symbol": symbol, "error": "行情数据暂时不可用,请勿编造数字。"}
 
 
 def _reliable_tool(
@@ -97,7 +93,7 @@ def build_tools() -> list[StructuredTool]:
             args_schema=StockPriceArgs,
             timeout=20.0,
             retries=2,
-            fallback=_stock_fallback,
+            fallback=stock_fallback,
         ),
         _reliable_tool(
             finance.search_news,

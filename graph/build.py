@@ -25,6 +25,7 @@ from graph.nodes import (
     make_remember_node,
     should_continue,
 )
+from graph.mcp_tools import build_mcp_tools, mcp_enabled
 from graph.state import AgentState
 from graph.tool_adapters import build_tools
 
@@ -40,7 +41,14 @@ def build_graph(
       - InMemorySaver:进程内,重启即失(够用于演示与评测)
       - PostgresSaver:落库,可跨进程续跑(我们已有现成的 PG,后续可切)
     """
-    tools = build_tools()
+    # 工具来源二选一(M5.3)。开关式:MCP_TOOLS=1 才走 MCP,默认仍是进程内工具。
+    # 两者产出的都是 StructuredTool,所以下面的装配代码完全不用区分。
+    tools = []
+    if mcp_enabled():
+        tools = build_mcp_tools()  # 失败会返回空列表,不抛异常
+    if not tools:
+        tools = build_tools()
+
     # bind_tools 就是把工具 schema 告诉模型 —— 对应手写版的 get_schemas()
     model_with_tools = build_chat_model().bind_tools(tools)
 

@@ -10,6 +10,7 @@
 额外提供了手写版没有的能力:传入 thread_id 即可续接上一轮对话(靠 checkpointer)。
 """
 
+import asyncio
 import uuid
 from typing import Optional
 
@@ -17,6 +18,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.errors import GraphRecursionError
 
 from core.schema import ToolCall, TrajectoryStep
+from graph.mcp_tools import mcp_enabled
 from obs.callbacks import ObsHandler
 from obs.metrics import RunRecord
 from obs.tracing import flush_tracing, setup_tracing
@@ -89,7 +91,7 @@ class GraphAgent:
         handler.start()
         hit_limit = False
         try:
-            final_state = self.graph.invoke({"question": question}, config)
+            final_state = self._invoke({"question": question}, config)
             messages = final_state["messages"]
         except GraphRecursionError:
             # 撞到步数上限。取出已有状态,行为与手写版保持一致:给一句兜底说明。
@@ -111,6 +113,21 @@ class GraphAgent:
             flush_tracing()
 
         return answer, _to_trajectory(messages)
+
+    def _invoke(self, inputs: dict, config: dict) -> dict:
+        """执行图。同步还是异步,取决于工具来自哪里(M5.3)。
+
+        MCP 的工具是**只支持异步调用**的(adapter 只实现了 _arun),所以开了
+        MCP_TOOLS 之后整条图必须走 ainvoke —— 跨进程通信的异步性质会沿着调用链
+        一路传染到这里。详见 graph/mcp_tools.py 的文件头。
+
+        为什么不干脆统一走 ainvoke:默认路径(进程内工具)保持 M5.2 的同步执行,
+        才能保证 M5.2.3 那份代价基线是可比的。否则一旦数字有变化,就分不清是
+        MCP 的影响还是执行模型变了的影响。
+        """
+        if mcp_enabled():
+            return asyncio.run(self.graph.ainvoke(inputs, config))
+        return self.graph.invoke(inputs, config)
 
 
 def _to_trajectory(messages: list) -> list[TrajectoryStep]:

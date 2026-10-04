@@ -20,7 +20,10 @@
 - **M5.2.1(已完成):自建观测层** —— 每次运行的耗时/token/成本/节点/工具落 JSONL,见 `obs/`。
 - **M5.2.2(已完成):OTel + Phoenix** —— 开关式接线,本地看瀑布图。
 - **M5.2.3(已完成):质量 + 代价双维评测** —— 报告里同时给出通过率和 token/成本/耗时构成。
-- M5.3:把工具改造成 MCP server。
+- **M5.3(已完成):工具 MCP 化** —— `mcp_server/` 用 FastMCP 把四个工具暴露成标准 MCP 服务,
+  `MCP_TOOLS=1` 开关切换。工具定义从两份收敛成一份(函数签名即 schema、docstring 即说明)。
+  留了两个已知问题:`retrieve` 走 MCP 会超时、每次调用新拉子进程导致 `act` 耗时涨约 10 倍,
+  详见 [`docs/design/M5.3-MCP.md`](docs/design/M5.3-MCP.md)。
 
 ## RAG 三层架构(M3)
 
