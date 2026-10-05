@@ -48,6 +48,11 @@ class ToolStat:
     fallback: int = 0
     total_ms: float = 0.0
     max_ms: float = 0.0
+    # M6 新增的两个数,它们是"分类重试 + 熔断"是否真的在起作用的直接证据:
+    #   retry_skipped 省掉的重试次数(确定性失败,重试无意义)
+    #   circuit_open  被熔断直接拒绝的调用次数(连外部请求都没发)
+    retry_skipped: int = 0
+    circuit_open: int = 0
 
     def add(self, ms: float, ok: bool) -> None:
         self.count += 1
@@ -68,6 +73,13 @@ class RunRecord:
 
     total_ms: float = 0.0
     hit_limit: bool = False  # 是否撞到 recursion_limit(不收敛)
+    # M6:预算快照与提前收尾的原因。
+    # hit_limit 和 stop_reason 的区别值得记住:
+    #   stop_reason 非空 = **我们自己的**边界生效了(走了 finalize,有答案);
+    #   hit_limit=True  = 连我们的边界都没拦住,被框架硬停(没有答案)。
+    # 改造后第二种应该几乎不再出现 —— 如果还出现,说明预算设得比 recursion_limit 还松。
+    stop_reason: str = ""
+    budget: dict = field(default_factory=dict)
 
     llm_calls: int = 0
     prompt_tokens: int = 0
@@ -108,10 +120,19 @@ class RunRecord:
     def add_tool(self, name: str, ms: float, ok: bool) -> None:
         self.tools.setdefault(name, ToolStat()).add(ms, ok)
 
-    def add_reliability(self, name: str, retry: int = 0, fallback: int = 0) -> None:
+    def add_reliability(
+        self,
+        name: str,
+        retry: int = 0,
+        fallback: int = 0,
+        retry_skipped: int = 0,
+        circuit_open: int = 0,
+    ) -> None:
         st = self.tools.setdefault(name, ToolStat())
         st.retry += retry
         st.fallback += fallback
+        st.retry_skipped += retry_skipped
+        st.circuit_open += circuit_open
 
     def add_error(self, where: str, message: str) -> None:
         self.errors.append({"where": where, "message": message[:500]})
@@ -129,6 +150,16 @@ class RunRecord:
     @property
     def tool_retries(self) -> int:
         return sum(s.retry for s in self.tools.values())
+
+    @property
+    def retries_skipped(self) -> int:
+        """因为"确定性失败,重试无意义"而省掉的重试次数(M6)。"""
+        return sum(s.retry_skipped for s in self.tools.values())
+
+    @property
+    def circuit_opens(self) -> int:
+        """被熔断拦住、连请求都没发出去的次数(M6)。"""
+        return sum(s.circuit_open for s in self.tools.values())
 
     @property
     def tool_ms(self) -> float:
@@ -161,11 +192,15 @@ class RunRecord:
 
         flags = []
         if self.hit_limit:
-            flags.append("撞上限")
+            flags.append("撞框架硬上限")
+        if self.stop_reason:
+            flags.append(f"提前收尾({self.stop_reason})")
         if self.tool_fails:
             flags.append(f"工具失败{self.tool_fails}")
         if self.tool_retries:
             flags.append(f"重试{self.tool_retries}")
+        if self.circuit_opens:
+            flags.append(f"熔断{self.circuit_opens}")
         if self.errors:
             flags.append(f"异常{len(self.errors)}")
         flag_text = f" ⚠️ {'/'.join(flags)}" if flags else ""
@@ -186,6 +221,8 @@ class RunRecord:
             "question": self.question,
             "total_ms": round(self.total_ms, 1),
             "hit_limit": self.hit_limit,
+            "stop_reason": self.stop_reason or None,
+            "budget": self.budget or None,
             "llm": {
                 "calls": self.llm_calls,
                 "ms": round(self.llm_ms, 1),
@@ -207,6 +244,8 @@ class RunRecord:
                     "fail": s.fail,
                     "retry": s.retry,
                     "fallback": s.fallback,
+                    "retry_skipped": s.retry_skipped,
+                    "circuit_open": s.circuit_open,
                     "total_ms": round(s.total_ms, 1),
                     "max_ms": round(s.max_ms, 1),
                 }

@@ -28,11 +28,9 @@ from uuid import UUID
 from langchain_core.callbacks import BaseCallbackHandler
 
 from core import reliability
+from core.failure import FAIL_PREFIX as _FAIL_PREFIX  # 失败标记的唯一来源
 from obs import logger
 from obs.metrics import RunRecord
-
-# core/reliability.py 里失败时返回的字符串前缀(见该文件末尾)
-_FAIL_PREFIX = "[工具失败"
 
 
 def _text_of(value: Any) -> str:
@@ -42,13 +40,22 @@ def _text_of(value: Any) -> str:
 
 
 class ObsHandler(BaseCallbackHandler):
-    def __init__(self, question: str, impl: str = "langgraph", thread_id: str = "") -> None:
+    def __init__(
+        self,
+        question: str,
+        impl: str = "langgraph",
+        thread_id: str = "",
+        budget: Any = None,
+    ) -> None:
         self.record = RunRecord(
             run_id=str(uuid.uuid4()),
             question=question,
             impl=impl,
             thread_id=thread_id,
         )
+        # M6:观测 -> 控制的闭环。预算自己不算钱(core 不能依赖 obs),
+        # 由这里在每次 LLM 调用结束后把累计用量推过去。
+        self.budget = budget
         # run_id -> 开始时间 / 名字(节点名或工具名)。
         # 工具并行执行时这两个字典会被多个线程访问,所以统一加锁。
         self._starts: dict[UUID, float] = {}
@@ -63,10 +70,14 @@ class ObsHandler(BaseCallbackHandler):
         reliability.add_observer(self._on_reliability)
         return self
 
-    def finish(self, hit_limit: bool = False) -> RunRecord:
+    def finish(self, hit_limit: bool = False, budget: Any = None) -> RunRecord:
         reliability.remove_observer(self._on_reliability)
         self.record.total_ms = (time.perf_counter() - self._t0) * 1000
         self.record.hit_limit = hit_limit
+        b = budget if budget is not None else self.budget
+        if b is not None:
+            self.record.budget = b.to_json()
+            self.record.stop_reason = b.tripped_reason()
         logger.log_run(self.record.to_json())
         return self.record
 
@@ -89,6 +100,12 @@ class ObsHandler(BaseCallbackHandler):
                 self.record.add_reliability(tool, retry=1)
             elif kind == "fallback_used":
                 self.record.add_reliability(tool, fallback=1)
+            # M6 的三个新事件。retry_skipped 和 circuit_open 是"分类重试 + 熔断"
+            # 真的在省钱的直接证据,所以要单独计数,不能混进 retry 里。
+            elif kind == "retry_skipped":
+                self.record.add_reliability(tool, retry_skipped=1)
+            elif kind == "circuit_open":
+                self.record.add_reliability(tool, circuit_open=1)
         logger.log_event(
             f"reliability_{kind}",
             self.record.run_id,
@@ -185,6 +202,9 @@ class ObsHandler(BaseCallbackHandler):
                 reasoning=reasoning,
                 model_returned=model_returned,
             )
+            # M6:把累计成本/调用次数推给预算。放在锁内,保证推过去的是一致的快照。
+            if self.budget is not None:
+                self.budget.update(self.record.cost(), self.record.llm_calls)
         logger.log_event(
             "llm_end",
             self.record.run_id,

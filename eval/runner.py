@@ -23,6 +23,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from core.breaker import current_breaker
+from core.failure import current_log
 from core.llm import LLM
 from eval.checks import build_judge_facts, run_checks
 from eval.judge import judge
@@ -68,7 +70,16 @@ def is_pass(case: dict, checks: dict, judged: dict) -> bool:
 
 
 def evaluate_one(agent, judge_llm: LLM, case: dict) -> dict:
-    """跑一道题的完整评测:作答 -> 规则检查 -> 裁判打分 -> 判定通过。"""
+    """跑一道题的完整评测:作答 -> 规则检查 -> 裁判打分 -> 判定通过。
+
+    开头的 reset 不是可选的卫生习惯,是**结果可比性的前提**:
+    熔断器和失败台账都是进程级状态(见 core/breaker.py 的说明),不清的话,
+    第 3 题会因为第 1 题把 `fetch_page` 打熔断了而直接拿不到工具 ——
+    那道题的成绩就不是它自己的了,而且题目顺序一变分数就变。
+    每题独立清零,才是"逐题可比"。
+    """
+    current_breaker().reset_all()
+    current_log().reset()
     t0 = time.time()
     answer, trajectory = agent.run(case["question"])
     elapsed = round(time.time() - t0, 1)
@@ -130,11 +141,17 @@ def summarize_cost(results: list[dict]) -> dict | None:
     total_cost = None if any(c is None for c in costs) else round(sum(costs), 6)
 
     tool_calls = tool_fails = tool_retries = 0
+    # M6 新增的两个计数:它们是"分类重试 + 熔断"真的在省钱的直接证据。
+    # retry_skipped 高 = 很多确定性失败被挡在重试之前(每次省一个往返 + 一次退避);
+    # circuit_open 高 = 整条链路不通时没有排队去撞。
+    retry_skipped = circuit_open = 0
     for o in obs_list:
         for st in (o.get("tools") or {}).values():
             tool_calls += st["count"]
             tool_fails += st["fail"]
             tool_retries += st["retry"]
+            retry_skipped += st.get("retry_skipped", 0)
+            circuit_open += st.get("circuit_open", 0)
 
     # 各节点耗时占比:这一行最有用 —— 它直接指出下一步优化该砍哪。
     node_ms: dict[str, float] = defaultdict(float)
@@ -160,7 +177,17 @@ def summarize_cost(results: list[dict]) -> dict | None:
         "tool_fails": tool_fails,
         "tool_fail_rate": round(tool_fails / tool_calls, 3) if tool_calls else 0.0,
         "tool_retries": tool_retries,
+        "retry_skipped": retry_skipped,
+        "circuit_open": circuit_open,
+        # 两个"被拦下来"的计数要分开看,它们含义完全不同:
+        #   hit_limit  = 撞了框架的 recursion_limit,流程被硬切断,**没有答案**;
+        #   stop_early = 我们自己的预算边界先生效,走了 finalize,**有答案**。
+        # M6 的目标就是把前者变成后者。
         "hit_limit": sum(1 for o in obs_list if o.get("hit_limit")),
+        "stop_early": sum(1 for o in obs_list if o.get("stop_reason")),
+        "stop_reasons": sorted({
+            o["stop_reason"] for o in obs_list if o.get("stop_reason")
+        }),
         "node_time_share": node_share,
         # 记下模型名:回归对比时必须知道"这份成绩是哪个模型跑的"。
         # 请求名和返回名可能不一样(旧名已下线、由新模型代服务),两个都留。
@@ -202,7 +229,15 @@ def _tool_brief(obs: dict) -> str:
     calls = sum(st["count"] for st in tools.values())
     fails = sum(st["fail"] for st in tools.values())
     retries = sum(st["retry"] for st in tools.values())
-    return f"{calls} ({fails}/{retries})"
+    skipped = sum(st.get("retry_skipped", 0) for st in tools.values())
+    opened = sum(st.get("circuit_open", 0) for st in tools.values())
+    brief = f"{calls} ({fails}/{retries})"
+    # 只在真的发生时才加后缀,不然每行都挂两个 0,噪音大于信息。
+    if skipped:
+        brief += f" 免重试{skipped}"
+    if opened:
+        brief += f" 熔断{opened}"
+    return brief
 
 
 def render_cost_section(cost: dict | None) -> list[str]:
@@ -233,8 +268,11 @@ def render_cost_section(cost: dict | None) -> list[str]:
         f"- 成本:总计 {_fmt_cost(cost['total_cost_cny'])},"
         f"平均每题 {_fmt_cost(cost['avg_cost_cny'])}",
         f"- 工具:共 {cost['tool_calls']} 次,失败 {cost['tool_fails']} 次"
-        f"({cost['tool_fail_rate'] * 100:.1f}%),重试 {cost['tool_retries']} 次",
-        f"- 撞步数上限:{cost['hit_limit']}/{cost['cases_with_obs']} 题",
+        f"({cost['tool_fail_rate'] * 100:.1f}%),重试 {cost['tool_retries']} 次,"
+        f"免重试 {cost.get('retry_skipped', 0)} 次,熔断拦截 {cost.get('circuit_open', 0)} 次",
+        f"- 撞框架硬上限(无答案):{cost['hit_limit']}/{cost['cases_with_obs']} 题;"
+        f"预算提前收尾(有答案):{cost.get('stop_early', 0)}/{cost['cases_with_obs']} 题"
+        + (f" —— {'、'.join(cost['stop_reasons'])}" if cost.get("stop_reasons") else ""),
         f"- 耗时构成:{share or '-'}",
     ]
 
@@ -276,8 +314,8 @@ def render_markdown(summary: dict, results: list[dict], stamp: str) -> str:
             "",
             "## 逐题代价",
             "",
-            "| 用例 | LLM | 输入(缓存) | 输出 | 成本 | 工具(失败/重试) | 最慢节点 | 撞上限 |",
-            "| --- | :-: | :-: | :-: | :-: | :-: | --- | :-: |",
+            "| 用例 | LLM | 输入(缓存) | 输出 | 成本 | 工具(失败/重试) | 最慢节点 | 收尾方式 |",
+            "| --- | :-: | :-: | :-: | :-: | :-: | --- | --- |",
         ]
         for r in results:
             o = r.get("obs")
@@ -285,12 +323,18 @@ def render_markdown(summary: dict, results: list[dict], stamp: str) -> str:
                 lines.append(f"| {r['id']} | - | - | - | - | - | - | - |")
                 continue
             m = o["llm"]
+            # 最后一列换成"怎么结束的":正常 / 预算提前收尾(有答案)/ 撞框架硬上限(无答案)。
+            if o.get("hit_limit"):
+                ending = "⛔撞框架硬上限"
+            elif o.get("stop_reason"):
+                ending = f"⚠️{o['stop_reason']}"
+            else:
+                ending = "正常"
             lines.append(
                 f"| {r['id']} | {m['calls']} | "
                 f"{m['prompt_tokens']}({m['cached_tokens']}) | "
                 f"{m['completion_tokens']} | {_fmt_cost(o.get('cost_cny'))} | "
-                f"{_tool_brief(o)} | {_slowest_node(o)} | "
-                f"{'是' if o.get('hit_limit') else '-'} |"
+                f"{_tool_brief(o)} | {_slowest_node(o)} | {ending} |"
             )
 
     # 失败/异常用例的详情,方便定位

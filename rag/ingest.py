@@ -72,6 +72,11 @@ def ingest_corpus(corpus_dir: str = "data/corpus") -> None:
 
         store.upsert(points)  # 向量进 Qdrant
         db.insert_chunks(rows)  # 原文进 Postgres
+        # ⚠️ 顺序要紧:幂等标记必须在上面两步都成功之后才盖(M6 ⑥)。
+        # 改造前是 upsert_document 一进来就把 content_hash 提交了,
+        # 结果 embed_texts 一失败,这篇文档就被永久标记为"已入库"却没有任何 chunk。
+        # 现在中途失败的后果是"下次重跑会重做",而不是"永久跳过且不报错"。
+        db.mark_ingested(doc_id, content)
         total_chunks += len(chunks)
         print(f"入库:{source}  →  {len(chunks)} 块")
 

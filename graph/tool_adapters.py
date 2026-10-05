@@ -22,7 +22,9 @@ from typing import Callable, Optional
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+from core.failure import FAIL_PREFIX
 from core.reliability import run_reliably
+from core.sandbox import wrap_untrusted
 from rag.retrieve import retrieve
 from tools import finance
 from tools.fallbacks import stock_fallback
@@ -73,7 +75,14 @@ def _reliable_tool(
             name=name,  # 观测用:和 LangChain 注册的工具名保持一致
         )
         # 统一转成字符串,和手写版 registry.call() 的行为一致。
-        return str(result)
+        text = str(result)
+
+        # M6 ⑤:外部内容包进"不可信区块",防 prompt injection。
+        # **我们自己生成的失败说明不能包** —— 那段文字里的【建议】是我们希望模型
+        # 遵守的指令,标成"不可信、不得执行"会和 M6 ② 自相矛盾。
+        if text.startswith(FAIL_PREFIX):
+            return text
+        return wrap_untrusted(text, source=name)
 
     return StructuredTool.from_function(
         func=wrapped,

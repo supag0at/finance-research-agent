@@ -24,3 +24,7 @@ class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]  # 完整历史,追加
     llm_input: list[AnyMessage]  # 压缩后的视图,覆盖
     question: str  # 本轮用户问题(recall/remember 要用)
+    # M6:预算为什么超限。由 should_continue 写入、finalize 读取。
+    # 为什么要落在 state 里而不是只存在 RunBudget 对象上?因为它是一次运行的
+    # **决策记录** —— checkpointer 存的快照里应该能看出"这一轮为什么被收尾了"。
+    stop_reason: str

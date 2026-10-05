@@ -23,3 +23,7 @@ opentelemetry-exporter-otlp-proto-http>=1.44,<2
 # mcp 是官方 Python SDK(含 FastMCP);adapters 负责把 MCP 工具转成 LangChain 工具。
 mcp>=1.30
 langchain-mcp-adapters>=0.3
+
+# M6:可靠性强化。持久化检查点 —— 没它只能用内存检查点,
+# 那是"同一进程内的短期记忆",不是故障恢复能力。装不上会自动退回内存版(见 graph/checkpoint.py)。
+langgraph-checkpoint-postgres>=2.0

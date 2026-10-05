@@ -54,11 +54,26 @@ def content_hash(content: str) -> str:
 
 
 def upsert_document(source: str, title: str, content: str) -> tuple[int, bool]:
-    """插入或更新一篇文档。
+    """插入或更新一篇文档,但**先不写 content_hash**。
 
     返回 (doc_id, changed):
         changed=True 表示是新文档或内容有变化(需要重新切块/向量化);
         changed=False 表示内容没变(可跳过,幂等)。
+
+    ⚠️ M6 修的 bug:**幂等标记必须最后写**。
+
+    原来这个函数在这里就把 content_hash 提交了,然后调用方才去做 embedding 和写向量。
+    一旦 embedding 中途失败(实测常见:境外链路抖动),这篇文档已经被标记成"已入库",
+    但 chunks 和 vectors 一个都没写。下次重跑会 `跳过(内容未变化)`,
+    **这篇文档永久检索不到,而且不报任何错**。
+
+    这是"先宣布成功,再去做事"的典型错误 —— 也正是业界说的
+    "accepted-but-not-yet-applied" 那种最难查的状态:
+    系统认为世界已经改变了,其实没有。
+
+    改法:把 content_hash 置空(或旧值不动)落盘,等 chunk + 向量都写成功之后,
+    由调用方调 `mark_ingested()` 再写哈希。这样中途失败的结果是"下次重做",
+    而不是"永久跳过"。
     """
     h = content_hash(content)
     with _connect() as conn, conn.cursor() as cur:
@@ -66,10 +81,11 @@ def upsert_document(source: str, title: str, content: str) -> tuple[int, bool]:
         row = cur.fetchone()
 
         if row is None:
+            # content_hash 先写成空串 = "正文已存,但还没完成入库"
             cur.execute(
                 "INSERT INTO fra_documents (source, title, content, content_hash) "
-                "VALUES (%s, %s, %s, %s) RETURNING id",
-                (source, title, content, h),
+                "VALUES (%s, %s, %s, '') RETURNING id",
+                (source, title, content),
             )
             doc_id = cur.fetchone()[0]
             conn.commit()
@@ -77,16 +93,31 @@ def upsert_document(source: str, title: str, content: str) -> tuple[int, bool]:
 
         doc_id, old_hash = row
         if old_hash == h:
-            return doc_id, False  # 内容没变,幂等跳过
+            return doc_id, False  # 内容没变且上次确实入库成功了,幂等跳过
 
-        # 内容变了:更新文档,并清掉旧 chunk(级联由调用方重建)
+        # 内容变了(或上次入库没跑完,old_hash 是空串):
+        # 更新正文、清空哈希、清掉旧 chunk,等调用方重建完再盖章。
         cur.execute(
-            "UPDATE fra_documents SET title=%s, content=%s, content_hash=%s WHERE id=%s",
-            (title, content, h, doc_id),
+            "UPDATE fra_documents SET title=%s, content=%s, content_hash='' WHERE id=%s",
+            (title, content, doc_id),
         )
         cur.execute("DELETE FROM fra_chunks WHERE doc_id=%s", (doc_id,))
         conn.commit()
         return doc_id, True
+
+
+def mark_ingested(doc_id: int, content: str) -> None:
+    """盖章:确认这篇文档的 chunk + 向量都写成功了,幂等标记才生效。
+
+    必须在 `store.upsert()` 和 `insert_chunks()` **都成功之后**才调用。
+    这就是"程序先确认结果,再宣布成功"。
+    """
+    with _connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE fra_documents SET content_hash=%s WHERE id=%s",
+            (content_hash(content), doc_id),
+        )
+        conn.commit()
 
 
 def insert_chunks(rows: list[tuple[str, int, int, str]]) -> None:

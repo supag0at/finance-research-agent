@@ -16,6 +16,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.messages import convert_to_messages, convert_to_openai_messages
 
 from core.agent import SYSTEM_PROMPT  # 复用同一份系统提示,保证与手写版可比
+from core.failure import target_of
 from core.llm import LLM
 from graph.state import AgentState
 from memory.long_term import recall, remember
@@ -103,12 +104,80 @@ def make_remember_node(use_long_term: bool = True):
     return remember_node
 
 
-def should_continue(state: AgentState) -> str:
+FINALIZE_PROMPT = """你的调研被提前终止了,原因:{reason}
+
+请**立即**基于你目前已经获得的信息给出最终结论,不要再请求调用任何工具。
+要求:
+1. 把已经确认的数据和结论写清楚,并说明出处;
+2. **明确列出哪些信息没能获取到**,以及这对结论的影响;
+3. 不要编造任何未经工具确认的数字。
+
+如果已获取的信息确实不足以回答,就直接说明不足在哪,并给出你能确定的部分。
+"""
+
+
+def make_finalize_node(model):
+    """强制收尾节点(M6):预算超限 / 检测到循环时,逼模型基于现有信息产出答案。
+
+    为什么需要它?改造前撞上限直接返回一句
+    `"(已达到最大步数,未能得出最终结论)"`。实测 `nvda_perf_01` 明明已经调了
+    29 次工具、拿到了部分数据,却交白卷,裁判三项全给 1 分。
+    **我们在工具层精心做了降级,在 Agent 层却直接放弃** —— 降级链的最后一环是断的。
+
+    关键细节:这里用的是**不带工具**的模型(`model` 而非 `model_with_tools`)。
+    不是靠 prompt 说服它别调工具,而是从能力上拿掉这个选项 ——
+    否则一个已经在循环里的模型大概率会继续要求调工具。
+    这也是"bounds, not retries"那条原则在节点层面的体现:约束要是结构性的。
+    """
+
+    def finalize_node(state: AgentState, config=None) -> dict:
+        # 原因从 budget 取(条件边没法写 state,所以在这里取并回写,
+        # 让 checkpointer 的快照里能看出"这一轮为什么被收尾了")。
+        budget = ((config or {}).get("configurable") or {}).get("budget")
+        reason = (
+            (budget.tripped_reason() if budget is not None else "")
+            or state.get("stop_reason")
+            or "已达到本轮调研的资源上限"
+        )
+        messages = list(state.get("llm_input") or state["messages"])
+        messages.append(HumanMessage(content=FINALIZE_PROMPT.format(reason=reason)))
+        try:
+            response = model.invoke(messages)
+        except Exception as exc:  # noqa: BLE001
+            # 连收尾都失败,才退回原来那句兜底。至少把原因带上。
+            response = AIMessage(
+                content=f"(调研提前终止:{reason};生成结论时也失败了:{type(exc).__name__})"
+            )
+        return {"messages": [response], "stop_reason": reason}
+
+    return finalize_node
+
+
+def should_continue(state: AgentState, config=None) -> str:
     """条件边 —— 对应手写版的 `if not message.tool_calls: return answer`。
 
     这就是"控制流从代码里浮现成图上一条边"的那一刻。
+
+    M6 在这里多了一个分支:**先问预算,再看模型想干什么**。
+    顺序是刻意的 —— 预算超了就不该再执行工具,哪怕模型要求了。
     """
     last = state["messages"][-1]
-    if getattr(last, "tool_calls", None):
+    tool_calls = getattr(last, "tool_calls", None) or []
+
+    budget = ((config or {}).get("configurable") or {}).get("budget")
+    if budget is not None:
+        # 把模型这一轮的调用意图登记进去,用于循环检测。
+        # 注意登记的是**意图**而非结果:工具每次都"成功"但返回无用内容时,
+        # 反复调同一目标本身就是不收敛的信号。
+        if tool_calls:
+            budget.note_tool_calls(
+                [(tc.get("name", "?"), target_of(tc.get("args") or {})) for tc in tool_calls]
+            )
+        reason = budget.exceeded()
+        if reason:
+            # 已经给出最终答案的话没必要再收尾一遍,直接去写记忆。
+            return "remember" if not tool_calls else "finalize"
+
+    if tool_calls:
         return "act"
     return "remember"

@@ -17,6 +17,8 @@ from typing import Optional
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.errors import GraphRecursionError
 
+from core.budget import RunBudget
+from core.failure import current_log
 from core.schema import ToolCall, TrajectoryStep
 from graph.mcp_tools import mcp_enabled
 from obs.callbacks import ObsHandler
@@ -80,9 +82,18 @@ class GraphAgent:
         setup_tracing()
 
         tid = thread_id or str(uuid.uuid4())
-        handler = ObsHandler(question=question, impl="langgraph", thread_id=tid)
+
+        # M6:每轮一个新预算。失败记录也要清 —— 它们都是"本轮"的概念。
+        # 熔断器刻意**不清**:"Reuters 现在拒绝我们"跨轮依然成立,
+        # 没理由每轮重新学一遍(评测逐题之间会显式 reset,保证可比)。
+        budget = RunBudget()
+        current_log().reset()
+
+        handler = ObsHandler(question=question, impl="langgraph", thread_id=tid, budget=budget)
         config = {
-            "configurable": {"thread_id": tid},
+            # budget 通过 configurable 传给节点 —— LangGraph 原生支持给节点传 config,
+            # 这样不用引入新的全局状态,也不用把它塞进 AgentState(它不是数据,是策略)。
+            "configurable": {"thread_id": tid, "budget": budget},
             "recursion_limit": self.recursion_limit,
             # 观测就挂在这里。业务代码(nodes.py)完全不知道它的存在。
             "callbacks": [handler],
@@ -106,7 +117,7 @@ class GraphAgent:
                     answer = msg.content if isinstance(msg.content, str) else str(msg.content)
                     break
         finally:
-            self.last_run = handler.finish(hit_limit=hit_limit)
+            self.last_run = handler.finish(hit_limit=hit_limit, budget=budget)
             if self.print_obs:
                 print(self.last_run.summary_line(), flush=True)
             # BatchSpanProcessor 是异步攒批的,不 flush 的话刚跑完去 Phoenix 会看不到。
