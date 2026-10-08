@@ -35,6 +35,7 @@ def build_graph(
     use_short_term: bool = True,
     use_long_term: bool = True,
     checkpointer: Optional[object] = None,
+    memory_mode: Optional[str] = None,
 ):
     """构造并编译图。
 
@@ -42,6 +43,14 @@ def build_graph(
     (默认 Postgres 落库,失败自动退回进程内)—— 见那个文件里关于
     "持久化执行"的说明。
     """
+    # M7 记忆档位:off=不用记忆;legacy=旧版(整段存、top3 召回);v2=新版(施工中)。
+    mode = memory_mode or ("legacy" if use_long_term else "off")
+    if mode not in ("off", "legacy", "v2"):
+        raise ValueError(f"未知 memory_mode: {mode!r}(可选 off / legacy / v2)")
+    if mode == "v2":
+        raise NotImplementedError("memory v2 尚未实现(M7 第 2~4 步)")
+    use_long_term = mode == "legacy"
+
     # 工具来源二选一(M5.3)。开关式:MCP_TOOLS=1 才走 MCP,默认仍是进程内工具。
     # 两者产出的都是 StructuredTool,所以下面的装配代码完全不用区分。
     tools = []

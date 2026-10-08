@@ -11,6 +11,7 @@
 """
 
 import asyncio
+import os
 import uuid
 from typing import Optional
 
@@ -40,9 +41,14 @@ class GraphAgent:
         recursion_limit: int = DEFAULT_RECURSION_LIMIT,
         checkpointer: Optional[object] = None,
         print_obs: bool = True,
+        memory_mode: Optional[str] = None,
     ) -> None:
         self.use_short_term = use_short_term
         self.use_long_term = use_long_term
+        # M7:记忆三档 off / legacy / v2。不传则由 use_long_term 推出
+        # (True→legacy,False→off),所以现有调用方和 eval/runner.py 不用改。
+        # 任何时候都能对新旧方案做 A/B 消融,不需要 git stash 回退代码。
+        self.memory_mode = memory_mode
         self.recursion_limit = recursion_limit
         self.print_obs = print_obs  # 跑完是否打印一行观测摘要
         self._checkpointer = checkpointer
@@ -62,12 +68,16 @@ class GraphAgent:
             self._graph = build_graph(
                 use_short_term=self.use_short_term,
                 use_long_term=self.use_long_term,
+                memory_mode=self.memory_mode,
                 checkpointer=self._checkpointer,
             )
         return self._graph
 
     def run(
-        self, question: str, thread_id: Optional[str] = None
+        self,
+        question: str,
+        thread_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> tuple[str, list[TrajectoryStep]]:
         """跑一轮调研,返回(最终答案, 轨迹)。
 
@@ -93,7 +103,13 @@ class GraphAgent:
         config = {
             # budget 通过 configurable 传给节点 —— LangGraph 原生支持给节点传 config,
             # 这样不用引入新的全局状态,也不用把它塞进 AgentState(它不是数据,是策略)。
-            "configurable": {"thread_id": tid, "budget": budget},
+            # user_id 是记忆隔离的依据(M7)。legacy 档不使用它 —— 这正是
+            # 旧方案"所有人共用一个库"的缺陷,隔离类评测题在 legacy 下必然失败。
+            "configurable": {
+                "thread_id": tid,
+                "budget": budget,
+                "user_id": user_id or os.getenv("MEMORY_USER_ID", "default"),
+            },
             "recursion_limit": self.recursion_limit,
             # 观测就挂在这里。业务代码(nodes.py)完全不知道它的存在。
             "callbacks": [handler],
