@@ -15,6 +15,7 @@
 """
 
 import random
+import re
 
 _TICKERS = ["AMD", "MSFT", "AAPL", "GOOGL", "AMZN", "META", "INTC", "QCOM", "AVGO", "比亚迪", "蔚来", "贵州茅台", "腾讯", "阿里巴巴"]
 
@@ -47,6 +48,53 @@ def stale_nvda() -> list[tuple[str, str]]:
         (f"我持有 100 股 NVDA,成本 {c} 美元,请记一下。", f"好的,已记录:你持有 100 股 NVDA,成本 {c} 美元。")
         for c in costs
     ]
+
+
+_HOLD = re.compile(r"我持有 (\d+) 股 (\S+?),成本 (\d+) 美元")
+
+
+def to_v2_records(pairs: list[tuple[str, str]], user_id: str, now: float | None = None):
+    """把填充问答转成 v2 的结构化记录,等价于"写入链路已正常工作"之后库里的样子。
+
+    ⚠️ 这是一个**假设**,不是实测:这里直接构造,而没有真的让抽取器跑 N 遍。
+    - 持仓陈述 → 语义记忆 holding:T;同一 key 的多个版本按时间串成取代链,只有最后一个 active。
+      这正是 v2 写入路径(精确 key 命中 → 取代旧版本)承诺做到的事,已由
+      eval/memory_write_offline.py 离线验证过 —— 但"抽取器每次都抽对 key"没有在这里被检验。
+    - 其余(行情/新闻/浮盈问答)→ 情景记忆,保留原文,tickers 取问句里出现的标的。
+    因此 v2 在"脏库"题上的好成绩,**只证明读取侧在干净结构化数据上的表现**;
+    写入侧的真实质量由 §5.3 的探针与端到端 --repeat 评估。
+    """
+    import time as _t
+    import uuid
+
+    from memory.schema import MemoryRecord, Source
+
+    now = now or _t.time()
+    n = len(pairs)
+    recs: list[MemoryRecord] = []
+    last_by_key: dict[str, MemoryRecord] = {}
+    for i, (q, a) in enumerate(pairs):
+        created = now - (n - i) * 60
+        tk = next((t for t in _TICKERS + ["NVDA", "TSLA"] if t in q), None)
+        tickers = [tk] if tk and tk.isascii() else []
+        m = _HOLD.search(q)
+        if m:
+            shares, t, cost = int(m[1]), m[2], int(m[3])
+            key = f"holding:{t}"
+            r = MemoryRecord(id=str(uuid.uuid4()), user_id=user_id, type="semantic", category="holding",
+                             key=key, value={"shares": shares, "cost": cost}, tickers=[t] if t.isascii() else [],
+                             text=f"用户持有 {shares} 股 {t},成本 {cost} 美元", created_at=created,
+                             source=Source(kind="user_statement"))
+            prev = last_by_key.get(key)
+            if prev is not None:
+                prev.status, prev.superseded_by, prev.valid_to = "superseded", r.id, created
+            last_by_key[key] = r
+        else:
+            r = MemoryRecord(id=str(uuid.uuid4()), user_id=user_id, type="episodic", tickers=tickers,
+                             text=a, importance=4, created_at=created,
+                             source=Source(kind="agent_conclusion"))
+        recs.append(r)
+    return recs
 
 
 def build(kinds: list[str]) -> list[tuple[str, str]]:

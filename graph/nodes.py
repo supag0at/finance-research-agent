@@ -27,13 +27,38 @@ from memory.short_term import compress_messages
 _summarizer = LLM()
 
 
-def make_recall_node(use_long_term: bool = True):
+def _mode_of(mode) -> str:
+    """兼容旧调用:True/False → legacy/off。"""
+    if isinstance(mode, bool):
+        return "legacy" if mode else "off"
+    return mode
+
+
+def _user_id_of(config) -> str:
+    uid = ((config or {}).get("configurable") or {}).get("user_id")
+    if not uid:
+        raise ValueError("v2 记忆需要 config.configurable.user_id(GraphAgent.run 会注入)")
+    return uid
+
+
+def make_recall_node(mode="legacy"):
     """开场节点:检索长期记忆,再把用户问题正式加入对话。
 
     注意顺序:记忆要放在用户问题**之前**,所以这两条消息在同一个节点里一起追加。
-    """
 
-    def recall_node(state: AgentState) -> dict:
+    mode:
+      off     不读记忆;
+      legacy  旧版(top3 向量检索,以 SystemMessage 注入。保留用于 ablation 对照);
+      v2      M7 新版(画像 + 目录 + 阈值召回,以**用户级**消息注入,见 memory/recall.py)。
+
+    ⚠️ v2 的 embedding 在本机实测约 1.3~2.6s(直接 POST SiliconFlow 约 1.74s),
+    判断原因是跨境网络而非模型本身;**未在同地域环境验证**。这笔延迟每轮付一次(recall)
+    加写入侧一次(remember),生产环境是否可忽略需要实测,不要拿本机数字下结论。
+    """
+    mode = _mode_of(mode)
+    use_long_term = mode == "legacy"
+
+    def recall_node(state: AgentState, config=None) -> dict:
         new_messages = []
 
         # 系统提示只在会话开头注入一次。用"历史是否为空"来判断,
@@ -48,6 +73,16 @@ def make_recall_node(use_long_term: bool = True):
                 new_messages.append(
                     SystemMessage(content="【关于用户/过往的记忆,供参考】\n" + mem_text)
                 )
+
+        if mode == "v2":
+            from memory.recall import build_context
+            from memory.runtime import get_store
+
+            ctx = build_context(user_id=_user_id_of(config), question=state["question"],
+                                store=get_store())
+            if ctx.memory_block:
+                # 用户级而非 system:记忆里可能含源自网页的内容,不能以 system 权限回流。
+                new_messages.append(HumanMessage(content=ctx.memory_block))
 
         new_messages.append(HumanMessage(content=state["question"]))
         return {"messages": new_messages}
@@ -91,10 +126,39 @@ def make_plan_node(model_with_tools):
     return plan_node
 
 
-def make_remember_node(use_long_term: bool = True):
-    """收尾节点:把本轮问答写入长期记忆。"""
+def make_remember_node(mode="legacy"):
+    """收尾节点:把本轮问答写入长期记忆。
 
-    def remember_node(state: AgentState) -> dict:
+    v2 是**同步**写入:抽取(1 次 LLM)+ 可能的冲突判定 + embedding 都在用户等待的路径上。
+    选同步的理由:评测可复现(异步写会让"刚写完马上读"的题随机失败),实现简单。
+    代价:每轮多出若干秒延迟(⚠️ 未实测,见 RunRecord.nodes["remember"])。
+    生产环境应改成后台异步写入(写完才对下一轮可见,需处理"紧接着的下一轮读不到"的窗口)。
+    """
+    mode = _mode_of(mode)
+    use_long_term = mode == "legacy"
+
+    def remember_node(state: AgentState, config=None) -> dict:
+        if mode == "v2":
+            last = state["messages"][-1]
+            if isinstance(last, AIMessage) and last.content:
+                from memory.runtime import get_llm, get_store
+                from memory.write import write_memories
+
+                cfg = (config or {}).get("configurable") or {}
+                budget = cfg.get("budget")
+                # write_memories 自己吞异常并发 memory_error 事件,不会拖垮主流程。
+                write_memories(
+                    user_id=_user_id_of(config),
+                    question=state["question"],
+                    answer=str(last.content),
+                    llm=get_llm(),
+                    store=get_store(),
+                    run_id=str(cfg.get("run_id", "")),
+                    thread_id=str(cfg.get("thread_id", "")),
+                    stop_reason=(budget.tripped_reason() if budget is not None else "")
+                    or state.get("stop_reason", ""),
+                )
+            return {}
         if use_long_term:
             last = state["messages"][-1]
             if isinstance(last, AIMessage) and last.content:

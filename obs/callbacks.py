@@ -29,6 +29,7 @@ from langchain_core.callbacks import BaseCallbackHandler
 
 from core import reliability
 from core.failure import FAIL_PREFIX as _FAIL_PREFIX  # 失败标记的唯一来源
+from memory import events as memory_events
 from obs import logger
 from obs.metrics import RunRecord
 
@@ -68,10 +69,12 @@ class ObsHandler(BaseCallbackHandler):
     def start(self) -> "ObsHandler":
         self._t0 = time.perf_counter()
         reliability.add_observer(self._on_reliability)
+        memory_events.add_observer(self._on_memory)
         return self
 
     def finish(self, hit_limit: bool = False, budget: Any = None) -> RunRecord:
         reliability.remove_observer(self._on_reliability)
+        memory_events.remove_observer(self._on_memory)
         self.record.total_ms = (time.perf_counter() - self._t0) * 1000
         self.record.hit_limit = hit_limit
         b = budget if budget is not None else self.budget
@@ -91,6 +94,19 @@ class ObsHandler(BaseCallbackHandler):
             self.finish()
 
     # ---------- 可靠性层的观察钩子(陷阱2 的 a 路) ----------
+
+    def _on_memory(self, event: dict) -> None:
+        """记忆事件 → RunRecord.memory 计数(M7)。事件 kind 见 memory/events.py。"""
+        kind = str(event.get("kind", ""))
+        name = {"memory_error": "errors", "memory_recalled": "recalled"}.get(kind, kind.removeprefix("memory_"))
+        with self._lock:
+            m = self.record.memory
+            m[name] = m.get(name, 0) + 1
+            if kind == "memory_recalled":
+                m["recalled_items"] = m.get("recalled_items", 0) + int(event.get("count", 0))
+                if event.get("injected"):
+                    m["injected"] = m.get("injected", 0) + 1
+        logger.log_event(kind, self.record.run_id, **{k: v for k, v in event.items() if k != "kind"})
 
     def _on_reliability(self, event: dict) -> None:
         kind = event.get("kind")

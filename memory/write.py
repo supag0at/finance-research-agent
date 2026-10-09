@@ -174,6 +174,20 @@ def write_memories(
                 old = store.find_by_key(user_id=user_id, key=nk, subject=str(c.get("subject") or "self"))
                 if old is None:
                     skip(f"要撤销的 {nk} 没有有效记录")
+                elif nk.startswith("holding:"):
+                    # 持仓的"撤销"不能只作废:作废之后库里就没有任何痕迹,
+                    # 用户再问"我还持有 NVDA 吗"只能得到"没有记录",分不清"从没持有"和"已清仓"。
+                    # (M7 评测 L2_invalidate 实测:只作废 → 0/3;旧版因为把两句话都存了反而 3/3。)
+                    # 所以改成"取代为一条清仓记录" —— 这是一个当前事实,不是遗忘。
+                    # 关注列表等不需要这个:移除即不存在,"关注哪些"本来就由剩下的项回答。
+                    ticker = nk.split(":", 1)[1]
+                    closed = _build_record(
+                        {"type": "semantic", "category": "holding", "key": nk,
+                         "subject": old.subject, "value": {"shares": 0, "closed": True},
+                         "text": f"用户已清仓 {ticker},目前不再持有", "tickers": [ticker],
+                         "importance": 6},
+                        user_id=user_id, run_id=run_id, thread_id=thread_id, stop_reason=stop_reason)
+                    to_add[("semantic", closed.key, closed.subject)] = (closed, old.id)
                 else:
                     invalidate_ids.append(old.id)
                 continue

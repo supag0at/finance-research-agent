@@ -47,9 +47,6 @@ def build_graph(
     mode = memory_mode or ("legacy" if use_long_term else "off")
     if mode not in ("off", "legacy", "v2"):
         raise ValueError(f"未知 memory_mode: {mode!r}(可选 off / legacy / v2)")
-    if mode == "v2":
-        raise NotImplementedError("memory v2 尚未实现(M7 第 2~4 步)")
-    use_long_term = mode == "legacy"
 
     # 工具来源二选一(M5.3)。开关式:MCP_TOOLS=1 才走 MCP,默认仍是进程内工具。
     # 两者产出的都是 StructuredTool,所以下面的装配代码完全不用区分。
@@ -58,6 +55,12 @@ def build_graph(
         tools = build_mcp_tools()  # 失败会返回空列表,不抛异常
     if not tools:
         tools = build_tools()
+    if mode == "v2":
+        # search_memory 不走 _reliable_tool:它需要 RunnableConfig(拿 user_id),
+        # 而可靠性包装会把调用丢进线程池,config 传不过去。本地向量检索也不需要重试/熔断。
+        from memory.tools import search_memory
+
+        tools = [*tools, search_memory]
 
     base_model = build_chat_model()
     # bind_tools 就是把工具 schema 告诉模型 —— 对应手写版的 get_schemas()
@@ -65,14 +68,14 @@ def build_graph(
 
     builder = StateGraph(AgentState)
 
-    builder.add_node("recall", make_recall_node(use_long_term))
+    builder.add_node("recall", make_recall_node(mode))
     builder.add_node("compress", make_compress_node(use_short_term))
     builder.add_node("plan", make_plan_node(model_with_tools))
     builder.add_node("act", ToolNode(tools))  # 预置节点,自动并行执行多个工具调用
     # M6:强制收尾节点。刻意传**不带工具**的 base_model —— 从能力上拿掉"再调工具"
     # 这个选项,而不是靠 prompt 劝说一个已经在循环里的模型。
     builder.add_node("finalize", make_finalize_node(base_model))
-    builder.add_node("remember", make_remember_node(use_long_term))
+    builder.add_node("remember", make_remember_node(mode))
 
     builder.add_edge(START, "recall")
     builder.add_edge("recall", "compress")

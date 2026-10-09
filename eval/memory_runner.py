@@ -130,7 +130,55 @@ def _pollute(mode: str, kinds: list[str], user_id: str) -> None:
             for i, (t, v) in enumerate(zip(texts, vectors))
         ])
         return
-    raise NotImplementedError("v2 的填充随第 3 步(写入)实现")
+    if mode == "v2":
+        from eval.memory_fillers import to_v2_records
+        from memory.runtime import get_store
+
+        store = get_store()
+        store.add_many(user_id=user_id, records=to_v2_records(pairs, user_id))
+        return
+    raise ValueError(mode)
+
+
+# ---- v2 的临时集合与 seed ----
+
+def _swap_v2_store():
+    """给 v2 每道题一个临时集合(题间互不污染),返回该 store。"""
+    from memory import runtime
+    from memory.store import MemoryStore
+
+    store = MemoryStore(collection=f"fra_memory_eval_v2_{uuid.uuid4().hex[:8]}")
+    runtime.set_store(store)
+    return store
+
+
+def _drop_v2_store(store) -> None:
+    from memory import runtime
+
+    try:
+        store.drop()
+    except Exception:  # noqa: BLE001
+        pass
+    runtime.set_store(None)
+
+
+def _seed_v2(store, seed: list[dict], user_id: str) -> None:
+    """把 seed 条目直接写成结构化记录(绕过抽取),用来构造时间/安全/主动服务等场景。"""
+    from memory.schema import MemoryRecord, Source
+
+    now = time.time()
+    recs = []
+    for s in seed:
+        typ = s["type"]
+        kind = s.get("source_kind") or ("user_statement" if typ == "semantic" else "agent_conclusion")
+        recs.append(MemoryRecord(
+            id=str(uuid.uuid4()), user_id=user_id, type=typ, text=s["text"],
+            tickers=s.get("tickers", []), importance=s.get("importance", 6),
+            as_of=s.get("as_of"), created_at=now - s.get("created_at_days_ago", 0) * 86400,
+            category=s.get("category"), key=s.get("key"), value=s.get("value"),
+            source=Source(kind=kind),
+        ))
+    store.add_many(user_id=user_id, records=recs)
 
 
 # ---- 单题 ----
@@ -140,8 +188,6 @@ def run_case(agent: GraphAgent, judge_llm: LLM, case: dict, mode: str) -> dict:
 
     if case["mode"] == "seed" and mode != "v2":
         return {**base, "status": "n/a", "reason": "seed 模式需要 v2 的结构化存储"}
-    if case["mode"] == "seed":
-        raise NotImplementedError("seed 模式随 M7 第 2 步实现")
 
     uid_of = lambda tag: f"eval-{case['id']}-{tag}-{uuid.uuid4().hex[:6]}"  # noqa: E731
     users: dict[str, str] = {}
@@ -150,12 +196,16 @@ def run_case(agent: GraphAgent, judge_llm: LLM, case: dict, mode: str) -> dict:
         return users.setdefault(tag, uid_of(tag))
 
     coll = _swap_legacy_collection() if mode == "legacy" else ""
+    v2_store = _swap_v2_store() if mode == "v2" else None
     cost = 0.0
     t0 = time.time()
+    mem_stats: dict = {}
     try:
         if case.get("pollute"):
             _pollute(mode, case["pollute"], uid(case.get("pollute_user", "default")))
-        for s in case["sessions"]:
+        if case["mode"] == "seed":
+            _seed_v2(v2_store, case["seed"], uid(case.get("seed_user", "default")))
+        for s in case.get("sessions", []):
             text, who = (s["text"], s["user"]) if isinstance(s, dict) else (s, "default")
             agent.run(text, thread_id=f"mem-{uuid.uuid4().hex[:8]}", user_id=uid(who))
             cost += (agent.last_run.cost() or 0.0) if agent.last_run else 0.0
@@ -165,9 +215,12 @@ def run_case(agent: GraphAgent, judge_llm: LLM, case: dict, mode: str) -> dict:
             case["question"], thread_id=f"mem-{uuid.uuid4().hex[:8]}", user_id=uid(who)
         )
         cost += (agent.last_run.cost() or 0.0) if agent.last_run else 0.0
+        mem_stats = dict(agent.last_run.memory) if agent.last_run else {}  # 提问那一轮的记忆计数
     finally:
         if coll:
             _drop_legacy_collection(coll)
+        if v2_store is not None:
+            _drop_v2_store(v2_store)
 
     verdict = _judge(judge_llm, case, answer)
     return {
@@ -176,6 +229,7 @@ def run_case(agent: GraphAgent, judge_llm: LLM, case: dict, mode: str) -> dict:
         "answer": answer,
         "reason": verdict["reason"],
         "judge_error": verdict.get("error"),
+        "memory": mem_stats,
         "cost_cny": round(cost, 6),
         "elapsed_s": round(time.time() - t0, 1),
     }

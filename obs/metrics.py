@@ -80,6 +80,11 @@ class RunRecord:
     # 改造后第二种应该几乎不再出现 —— 如果还出现,说明预算设得比 recursion_limit 还松。
     stop_reason: str = ""
     budget: dict = field(default_factory=dict)
+    # M7:本轮记忆事件的计数(memory/events.py 发出,ObsHandler 汇总)。
+    # 例如 {"recalled": 2, "injected": 1, "added": 1, "errors": 0}。
+    # 空 dict 表示没用 v2 记忆。注意:抽取/冲突判定的 LLM 调用走 core.LLM 而不是 LangChain,
+    # 不在 llm.calls / cost 里 —— 开 v2 后单轮真实成本比这里显示的略高。
+    memory: dict = field(default_factory=dict)
 
     llm_calls: int = 0
     prompt_tokens: int = 0
@@ -203,6 +208,8 @@ class RunRecord:
             flags.append(f"熔断{self.circuit_opens}")
         if self.errors:
             flags.append(f"异常{len(self.errors)}")
+        if self.memory.get("errors"):
+            flags.append(f"记忆错误{self.memory['errors']}")
         flag_text = f" ⚠️ {'/'.join(flags)}" if flags else ""
 
         return (
@@ -223,6 +230,7 @@ class RunRecord:
             "hit_limit": self.hit_limit,
             "stop_reason": self.stop_reason or None,
             "budget": self.budget or None,
+            "memory": self.memory or None,
             "llm": {
                 "calls": self.llm_calls,
                 "ms": round(self.llm_ms, 1),

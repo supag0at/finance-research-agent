@@ -97,15 +97,30 @@ def main() -> int:
         )
         write(store, "U3", llm)
         s = write(store, "U3", llm)
-        check("撤销 → invalidated 1,且没有写新记录", s["invalidated"] == 1 and s["added"] == 0, str(s))
-        check("撤销后没有有效记录", store.find_by_key(user_id="U3", key="holding:NVDA") is None)
-        check("旧记录状态为 invalidated(未删除)",
-              store.history(user_id="U3", key="holding:NVDA")[0].status == "invalidated")
+        check("持仓撤销 → 取代为清仓记录(updated 1,不是单纯作废)",
+              s["updated"] == 1 and s["invalidated"] == 0, str(s))
+        cur = store.find_by_key(user_id="U3", key="holding:NVDA")
+        check("当前有效记录是『已清仓』事实", cur is not None and cur.value == {"shares": 0, "closed": True}
+              and "清仓" in cur.text, str(cur and cur.text))
+        check("旧持仓记录被取代而非删除",
+              any(h.status == "superseded" and h.value == {"shares": 100}
+                  for h in store.history(user_id="U3", key="holding:NVDA")))
         s = write(store, "U3", llm)
         check("撤销不存在的东西 → 跳过而不是报错", s["skipped"] == 1 and s["errors"] == 0, str(s))
         s = write(store, "U3", llm)
-        check("清仓后重新买入 → 作为新增", s["added"] == 1)
+        check("清仓后重新买入 → 取代清仓记录", s["updated"] == 1)
         check("当前有效值是 30", store.find_by_key(user_id="U3", key="holding:NVDA").value == {"shares": 30})
+
+        print("\n场景3b · 非持仓类撤销(关注列表)仍然是作废")
+        llm = FakeLLM(
+            {"memories": [{"type": "semantic", "category": "watchlist", "key": "watchlist:AMD",
+                           "value": {"on": True}, "text": "用户关注 AMD", "tickers": ["AMD"], "importance": 5}]},
+            {"memories": [{"type": "semantic", "category": "watchlist", "key": "watchlist:AMD", "retract": True}]},
+        )
+        write(store, "U3b", llm)
+        s = write(store, "U3b", llm)
+        check("关注移除 → invalidated 1 且无新记录", s["invalidated"] == 1 and s["added"] == 0 and s["updated"] == 0, str(s))
+        check("移除后没有有效记录", store.find_by_key(user_id="U3b", key="watchlist:AMD") is None)
 
         print("\n场景4 · 写入顺序:新记录没写成,旧记录不能失效")
         write(store, "U4", FakeLLM({"memories": [sem("holding:NVDA", {"shares": 100}, "用户持有 100 股 NVDA")]}))

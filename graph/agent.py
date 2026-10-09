@@ -108,6 +108,7 @@ class GraphAgent:
             "configurable": {
                 "thread_id": tid,
                 "budget": budget,
+                "run_id": handler.record.run_id,  # 写入的记忆记下来源 run,可追溯
                 "user_id": user_id or os.getenv("MEMORY_USER_ID", "default"),
             },
             "recursion_limit": self.recursion_limit,
