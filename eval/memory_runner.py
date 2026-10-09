@@ -103,6 +103,36 @@ def _drop_legacy_collection(name: str) -> None:
         pass
 
 
+def _pollute(mode: str, kinds: list[str], user_id: str) -> None:
+    """跑题之前先把记忆库弄脏(见 eval/memory_fillers.py 的说明)。
+
+    不经过 agent/LLM,直接批量 embedding 后写库:便宜,而且保证填充内容是确定的。
+    legacy 的写入格式与 long_term.remember 完全一致,所以和真实累积出来的库没有区别
+    (除了没有走抽取 —— 旧方案本来就没有抽取)。
+    """
+    from eval.memory_fillers import build
+
+    pairs = build(kinds)
+    if mode == "off":
+        return  # 不用记忆,脏不脏无所谓
+    if mode == "legacy":
+        from memory import long_term
+        from rag.embedding import embed_texts
+
+        texts = [f"用户问题:{q}\n调研结论:{a}" for q, a in pairs]
+        long_term._ensure_collection()
+        now = time.time()
+        vectors = embed_texts(texts)
+        # 时间戳依次递增:填充都比评测里的写入"更旧"。
+        long_term._store.upsert([
+            {"id": str(uuid.uuid4()), "vector": v,
+             "payload": {"text": t, "ts": now - (len(texts) - i) * 60}}
+            for i, (t, v) in enumerate(zip(texts, vectors))
+        ])
+        return
+    raise NotImplementedError("v2 的填充随第 3 步(写入)实现")
+
+
 # ---- 单题 ----
 
 def run_case(agent: GraphAgent, judge_llm: LLM, case: dict, mode: str) -> dict:
@@ -123,6 +153,8 @@ def run_case(agent: GraphAgent, judge_llm: LLM, case: dict, mode: str) -> dict:
     cost = 0.0
     t0 = time.time()
     try:
+        if case.get("pollute"):
+            _pollute(mode, case["pollute"], uid(case.get("pollute_user", "default")))
         for s in case["sessions"]:
             text, who = (s["text"], s["user"]) if isinstance(s, dict) else (s, "default")
             agent.run(text, thread_id=f"mem-{uuid.uuid4().hex[:8]}", user_id=uid(who))
@@ -200,9 +232,13 @@ def main() -> int:
     ap.add_argument("--only", help="只跑某一题(按 id)")
     ap.add_argument("--repeat", type=int, default=1, help="每题重复次数,抗 LLM 噪声(建议 3)")
     ap.add_argument("--level", help="只跑某一层(L1/L2/abstain/noise/isolation/safety/L3)")
+    ap.add_argument("--group", choices=["clean", "dirty", "all"], default="clean",
+                    help="clean=常规题(默认);dirty=先弄脏记忆库的题,单独跑;all=全部")
     args = ap.parse_args()
 
-    cases = [c for c in load_cases() if (not args.only or c["id"] == args.only)
+    cases = [c for c in load_cases()
+             if args.group == "all" or c.get("group", "clean") == args.group]
+    cases = [c for c in cases if (not args.only or c["id"] == args.only)
              and (not args.level or c["level"] == args.level)]
     agent = GraphAgent(memory_mode=args.mode, print_obs=False)
     judge_llm = LLM()

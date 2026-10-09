@@ -9,6 +9,7 @@
 base_url / model 不同。
 """
 
+import json
 import os
 
 import httpx
@@ -91,3 +92,26 @@ class LLM:
             messages=messages,
         )
         return self._message_of(response, "LLM.complete").content or ""
+
+    def complete_json(self, messages: list[dict]) -> dict:
+        """要求模型返回一个 JSON 对象并解析(M7:记忆抽取、冲突判定用)。
+
+        用 JSON 模式而不是 strict schema:DeepSeek 对 strict 的支持我们没验证过。
+        JSON 模式只保证"能解析",**字段对不对由调用方校验**(记忆写入走 pydantic),
+        校验不过就跳过并记事件,而不是写入残缺数据。
+        注意:DeepSeek 的 JSON 模式要求 prompt 里出现 "json" 字样。
+        解析失败直接抛 ValueError,由调用方决定怎么降级。
+        """
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            response_format={"type": "json_object"},
+        )
+        text = (self._message_of(response, "LLM.complete_json").content or "").strip()
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"模型返回的不是合法 JSON: {text[:120]!r}") from exc
+        if not isinstance(data, dict):
+            raise ValueError(f"期望 JSON 对象,实际是 {type(data).__name__}")
+        return data
