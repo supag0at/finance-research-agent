@@ -134,6 +134,8 @@ def run_reliably(
                 future = executor.submit(func, **kwargs)
                 result = future.result(timeout=timeout)
             breaker.on_success(name)
+            # M7:成功也要发事件 —— 程序记忆需要"反证"才能让过时的规则退役。
+            _emit({"kind": "succeeded", "tool": name, "target": target})
             return result
 
         except concurrent.futures.TimeoutError:
@@ -150,6 +152,7 @@ def run_reliably(
             {
                 "kind": "attempt_failed",
                 "tool": name,
+                "target": target,  # M7:程序记忆按目标(域名)归纳
                 "attempt": attempt,
                 "error": last_error,
                 "failure_kind": last_kind.value,

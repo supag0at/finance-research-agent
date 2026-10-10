@@ -32,6 +32,9 @@ def epi_rec(user, text, *, days_ago=0, importance=5, tickers=("NVDA",), **kw):
 
 
 def main() -> int:
+    import os
+
+    os.environ["MEMORY_PROCEDURAL"] = "0"  # 这里只测读取侧,不碰 Postgres 里的真实规则表
     store = MemoryStore(collection=f"fra_memory_rtest_{uuid.uuid4().hex[:8]}", embed=fake_embed, dim=DIM)
     runtime.set_store(store)
     old_thr = recall.RECALL_THRESHOLD

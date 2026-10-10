@@ -1,5 +1,12 @@
 """长期记忆:跨会话的语义记忆。
 
+⚠️ **LEGACY(M7 起)**:这是 M3.5 的旧实现,保留有两个原因 ——
+  1. 手写版 `core/agent.py` 仍在使用;
+  2. 作为 M7 消融评测的 `legacy` 对照档(`GraphAgent(memory_mode="legacy")`)。
+**不要在它上面继续加功能。** 已知缺陷(M7 评测实测):没有用户隔离(隔离题 0/3 全泄漏)、
+整段对话原文入库、无阈值硬塞 top3、无时间/取代关系。新实现见 `memory/{schema,store,write,recall}.py`,
+设计与结果见 docs/design/M7-记忆强化.md。
+
 本质就是"对一个记忆库做 RAG"——复用 RAG 那套 embedding + Qdrant 基建,只是
 换一个集合 fra_memory,存的不是文档而是"记忆条目"。
 

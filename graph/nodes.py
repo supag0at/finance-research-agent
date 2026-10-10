@@ -64,7 +64,14 @@ def make_recall_node(mode="legacy"):
         # 系统提示只在会话开头注入一次。用"历史是否为空"来判断,
         # 这样同一个 thread_id 二次提问时(状态已从 checkpointer 恢复)不会重复注入。
         if not state.get("messages"):
-            new_messages.append(SystemMessage(content=SYSTEM_PROMPT))
+            prompt = SYSTEM_PROMPT
+            if mode == "v2":
+                # 程序记忆:代码模板生成的、可信的经验规则,所以放系统提示(与用户记忆块相反)。
+                # 随系统提示只在会话开头注入一次,长会话里不会中途刷新。
+                from memory.procedural import render_for_prompt
+
+                prompt += render_for_prompt()
+            new_messages.append(SystemMessage(content=prompt))
 
         if use_long_term:
             memories = recall(state["question"])

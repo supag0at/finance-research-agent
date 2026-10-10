@@ -110,6 +110,8 @@ class ObsHandler(BaseCallbackHandler):
 
     def _on_reliability(self, event: dict) -> None:
         kind = event.get("kind")
+        if kind == "succeeded":
+            return  # 只给程序记忆当反证用,逐次成功不进观测日志(太吵)
         tool = event.get("tool", "unknown")
         with self._lock:
             if kind == "attempt_failed":

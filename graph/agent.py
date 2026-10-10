@@ -18,8 +18,10 @@ from typing import Optional
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.errors import GraphRecursionError
 
+from core import reliability
 from core.budget import RunBudget
 from core.failure import current_log
+from memory import procedural
 from core.schema import ToolCall, TrajectoryStep
 from graph.mcp_tools import mcp_enabled
 from obs.callbacks import ObsHandler
@@ -117,6 +119,12 @@ class GraphAgent:
         }
 
         handler.start()
+        # M7 程序记忆:在 finally 里归纳,而不是 remember 节点 —— 撞硬上限的运行走不到
+        # remember,而它们恰恰是失败最多、最该学的;且程序记忆来自运行遥测,不是对话。
+        collector = None
+        if self.memory_mode == "v2" and procedural.enabled():
+            collector = procedural.RunCollector()
+            reliability.add_observer(collector)
         hit_limit = False
         try:
             final_state = self._invoke({"question": question}, config)
@@ -134,6 +142,11 @@ class GraphAgent:
                     answer = msg.content if isinstance(msg.content, str) else str(msg.content)
                     break
         finally:
+            if collector is not None:
+                reliability.remove_observer(collector)
+                # observe_run 自己吞异常;放在 handler.finish 之前,让规则事件进本轮计数。
+                procedural.get_store().observe_run(
+                    run_id=handler.record.run_id, failures=collector.failures, successes=collector.successes)
             self.last_run = handler.finish(hit_limit=hit_limit, budget=budget)
             if self.print_obs:
                 print(self.last_run.summary_line(), flush=True)

@@ -30,6 +30,12 @@
   因为可靠性改善的是最坏情况,而真实评测的网络噪声比效果大一个量级。
   期间踩的一个坑很值得看:**边界设得比正常运行还低,反而更贵**(多花 35%)。
   详见 [`docs/design/M6-可靠性强化.md`](docs/design/M6-可靠性强化.md)。
+- **M7(已完成):记忆强化** —— 记忆分型(情景/语义/程序)、写入筛选 + 结构化抽取、
+  按 key 精确取代与向量模糊冲突判定、`user_id` 接口级隔离、阈值召回 + 三因子重排、
+  `search_memory` 工具、程序记忆(从确定性失败归纳)。用 off / legacy / v2 三档消融评测。
+  旧方案在小库下近乎满分,**真正的差距在隔离(0/3→3/3)、链式更新、版本混杂的脏库**;
+  评测还抓出一个设计缺陷(清仓被当成遗忘)并修复。
+  详见 [`docs/design/M7-记忆强化.md`](docs/design/M7-记忆强化.md)。
 
 ## RAG 三层架构(M3)
 
@@ -51,7 +57,10 @@
   在 `core/agent.py` 每次调 LLM 前触发,超过阈值才压缩,且不破坏 assistant→tool 配对。
 - 长期记忆 `memory/long_term.py`:`remember()` / `recall()`,复用 embedding + Qdrant
   (集合 `fra_memory`)。未配 `EMBED_API_KEY` 时自动降级(不报错)。
-- 高阶技巧留白见 `memory/MEMORY.md`。
+- ⚠️ 以上长期记忆是 **legacy**(手写版 `core/agent.py` 仍在用)。LangGraph 版可用
+  `GraphAgent(memory_mode="v2")` 切到 M7 新记忆(`memory/{schema,store,extract,write,recall,tools,procedural}.py`),
+  `off / legacy / v2` 三档用于消融评测:`python -m eval.memory_runner --mode v2`。
+- 高阶技巧与状态见 `memory/MEMORY.md`。
 
 ## 评测(M4)
 
