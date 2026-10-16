@@ -42,6 +42,10 @@ class LLM:
         # reasoning_content 字段里。设环境变量 LLM_THINKING=1 即可开启。
         self.thinking = os.environ.get("LLM_THINKING", "").lower() in ("1", "true", "yes")
 
+        # 最近一次 complete / complete_json 的 usage。这两个方法走的是裸 openai 客户端,
+        # LangChain 回调看不到,观测层只能从这里取(M8:压缩自身的成本)。
+        self.last_usage = None
+
     @staticmethod
     def _message_of(response, where: str):
         """从响应里取出消息,并对"空响应"给出可诊断的报错。
@@ -91,6 +95,7 @@ class LLM:
             model=self.model,
             messages=messages,
         )
+        self.last_usage = getattr(response, "usage", None)
         return self._message_of(response, "LLM.complete").content or ""
 
     def complete_json(self, messages: list[dict]) -> dict:
@@ -107,6 +112,7 @@ class LLM:
             messages=messages,
             response_format={"type": "json_object"},
         )
+        self.last_usage = getattr(response, "usage", None)
         text = (self._message_of(response, "LLM.complete_json").content or "").strip()
         try:
             data = json.loads(text)

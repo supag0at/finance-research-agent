@@ -114,7 +114,7 @@ eval/reports/<时间戳>.md    (汇总报告,人类可读)
 思路很朴素:把回答里的数字抠出来,逐个去工具返回里做子串匹配,找不到的就是疑似编造。
 
 ```python
-# _meaningful_numbers():只保留"有意义的财经数字"
+# _meaningful_numbers():只保留"有意义的财经数字"(M8 起实现在 core/numbers.py)
 if "." in tok or val >= 100:   # 带小数点的,或 >=100 的整数
     nums.append(tok)
 ```

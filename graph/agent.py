@@ -44,6 +44,8 @@ class GraphAgent:
         checkpointer: Optional[object] = None,
         print_obs: bool = True,
         memory_mode: Optional[str] = None,
+        compress_mode: Optional[str] = None,
+        tools: Optional[list] = None,
     ) -> None:
         self.use_short_term = use_short_term
         self.use_long_term = use_long_term
@@ -51,6 +53,10 @@ class GraphAgent:
         # (True→legacy,False→off),所以现有调用方和 eval/runner.py 不用改。
         # 任何时候都能对新旧方案做 A/B 消融,不需要 git stash 回退代码。
         self.memory_mode = memory_mode
+        # M8:压缩三档 off / legacy / v2,不传则看环境变量 COMPRESS_MODE(见 graph/build.py)。
+        # tools 只给回放评测用(eval/compress_replay.py),正常运行不传。
+        self.compress_mode = compress_mode
+        self._tools = tools
         self.recursion_limit = recursion_limit
         self.print_obs = print_obs  # 跑完是否打印一行观测摘要
         self._checkpointer = checkpointer
@@ -71,6 +77,8 @@ class GraphAgent:
                 use_short_term=self.use_short_term,
                 use_long_term=self.use_long_term,
                 memory_mode=self.memory_mode,
+                compress_mode=self.compress_mode,
+                tools=self._tools,
                 checkpointer=self._checkpointer,
             )
         return self._graph

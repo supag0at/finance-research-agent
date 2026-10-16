@@ -15,16 +15,59 @@
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.messages import convert_to_messages, convert_to_openai_messages
 
+import time
+
 from core.agent import SYSTEM_PROMPT  # 复用同一份系统提示,保证与手写版可比
 from core.failure import target_of
 from core.llm import LLM
 from graph.state import AgentState
+from memory import events as memory_events
+from memory.context import compress_step, empty_ctx
+from memory.context.tokens import usage_tokens
 from memory.long_term import recall, remember
 from memory.short_term import compress_messages
+
+
+class _MeteredLLM:
+    """给摘要器加计量,不改行为。
+
+    摘要器走 core.LLM(裸 openai 客户端),LangChain 回调看不到它的 token 和耗时 ——
+    M5.2 观测到 compress 占 29.8% 墙钟时,其实连它花了多少 token 都不知道。
+    legacy 和 v2 共用这一层,A/B 时两边的压缩成本才是同一把尺子量的。
+    """
+
+    def __init__(self, llm: LLM, mode: str) -> None:
+        self._llm = llm
+        self.mode = mode
+
+    @property
+    def last_usage(self):
+        return self._llm.last_usage
+
+    def _metered(self, fn, messages):
+        t0 = time.perf_counter()
+        try:
+            return fn(messages)
+        finally:
+            in_tok, out_tok = usage_tokens(self._llm.last_usage)
+            memory_events.emit("ctx_summarizer_call", mode=self.mode,
+                               ms=round((time.perf_counter() - t0) * 1000, 1),
+                               in_tokens=in_tok, out_tokens=out_tok)
+
+    def complete(self, messages: list[dict]) -> str:
+        self._llm.last_usage = None
+        return self._metered(self._llm.complete, messages)
+
+    def complete_json(self, messages: list[dict]) -> dict:
+        self._llm.last_usage = None
+        return self._metered(self._llm.complete_json, messages)
+
 
 # 摘要用的模型:直接复用手写版的 LLM 封装(它有 complete 方法)。
 # 这样 memory/short_term.py 完全不用改。
 _summarizer = LLM()
+
+COMPRESS_MODES = ("off", "legacy", "v2")
 
 
 def _mode_of(mode) -> str:
@@ -92,26 +135,47 @@ def make_recall_node(mode="legacy"):
                 new_messages.append(HumanMessage(content=ctx.memory_block))
 
         new_messages.append(HumanMessage(content=state["question"]))
-        return {"messages": new_messages}
+
+        # M8:记下本轮边界,供压缩区分"受保护头部"和"可压缩的调研过程"。
+        # 三种记忆档位都要写 —— 压缩与记忆档位无关。
+        start = len(state.get("messages") or [])
+        turns = [*(state.get("turns") or []), {"start": start, "body": start + len(new_messages)}]
+        return {
+            "messages": new_messages,
+            "turns": turns,
+            "ctx": empty_ctx(len(turns) - 1, start + len(new_messages)),
+        }
 
     return recall_node
 
 
-def make_compress_node(use_short_term: bool = True):
+def make_compress_node(mode="v2"):
     """短期记忆节点:把完整历史压成"给模型看的视图",写入 llm_input。
 
     关键:**不修改 messages**。压缩只影响发给模型的内容,不影响记录在案的历史。
+
+    mode(兼容旧调用:True → legacy,False → off):
+      off     不压缩;
+      legacy  M5 以来的 memory/short_term.py(按条数触发、每圈重算摘要)。保留用于消融对照;
+      v2      M8 的 memory/context/(增量归档 + 钉住区 + 可回读),见 docs/design/M8-上下文压缩.md。
     """
+    if isinstance(mode, bool):
+        mode = "legacy" if mode else "off"
+    if mode not in COMPRESS_MODES:
+        raise ValueError(f"未知 compress_mode: {mode!r}(可选 {' / '.join(COMPRESS_MODES)})")
+    summarizer = _MeteredLLM(_summarizer, mode)
 
     def compress_node(state: AgentState) -> dict:
         messages = state["messages"]
-        if not use_short_term:
+        if mode == "off":
             return {"llm_input": messages}
+        if mode == "v2":
+            return compress_step(state, summarizer)
 
         # memory/short_term.py 处理的是 OpenAI 字典格式,这里做一次来回转换,
         # 从而完全复用已有逻辑(包括那个"不能让窗口以孤立 tool 消息开头"的细节)。
         as_dicts = convert_to_openai_messages(messages)
-        compressed = compress_messages(as_dicts, _summarizer)
+        compressed = compress_messages(as_dicts, summarizer)
         return {"llm_input": convert_to_messages(compressed)}
 
     return compress_node

@@ -85,6 +85,10 @@ class RunRecord:
     # 空 dict 表示没用 v2 记忆。注意:抽取/冲突判定的 LLM 调用走 core.LLM 而不是 LangChain,
     # 不在 llm.calls / cost 里 —— 开 v2 后单轮真实成本比这里显示的略高。
     memory: dict = field(default_factory=dict)
+    # M8:本轮上下文压缩的汇总(memory/context 发出的 ctx_* 事件)。空 dict = 没走过 compress。
+    # 同 memory:摘要/归档调用走 core.LLM,不在 llm.calls / cost 里,
+    # 真实成本 = cost + 这里的 summarizer_in_tokens / summarizer_out_tokens。
+    ctx: dict = field(default_factory=dict)
 
     llm_calls: int = 0
     prompt_tokens: int = 0
@@ -210,6 +214,12 @@ class RunRecord:
             flags.append(f"异常{len(self.errors)}")
         if self.memory.get("errors"):
             flags.append(f"记忆错误{self.memory['errors']}")
+        if self.ctx.get("compactions"):
+            flags.append(f"压缩{self.ctx['compactions']}次")
+        if self.ctx.get("fallbacks"):
+            flags.append(f"归档降级{self.ctx['fallbacks']}")
+        if self.ctx.get("readbacks"):
+            flags.append(f"回读{self.ctx['readbacks']}")
         flag_text = f" ⚠️ {'/'.join(flags)}" if flags else ""
 
         return (
@@ -231,6 +241,7 @@ class RunRecord:
             "stop_reason": self.stop_reason or None,
             "budget": self.budget or None,
             "memory": self.memory or None,
+            "ctx": self.ctx or None,
             "llm": {
                 "calls": self.llm_calls,
                 "ms": round(self.llm_ms, 1),

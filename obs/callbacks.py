@@ -98,6 +98,10 @@ class ObsHandler(BaseCallbackHandler):
     def _on_memory(self, event: dict) -> None:
         """记忆事件 → RunRecord.memory 计数(M7)。事件 kind 见 memory/events.py。"""
         kind = str(event.get("kind", ""))
+        if kind.startswith("ctx_"):
+            self._on_ctx(kind, event)
+            logger.log_event(kind, self.record.run_id, **{k: v for k, v in event.items() if k != "kind"})
+            return
         name = {"memory_error": "errors", "memory_recalled": "recalled"}.get(kind, kind.removeprefix("memory_"))
         with self._lock:
             m = self.record.memory
@@ -107,6 +111,38 @@ class ObsHandler(BaseCallbackHandler):
                 if event.get("injected"):
                     m["injected"] = m.get("injected", 0) + 1
         logger.log_event(kind, self.record.run_id, **{k: v for k, v in event.items() if k != "kind"})
+
+    def _on_ctx(self, kind: str, e: dict) -> None:
+        """压缩事件 → RunRecord.ctx(M8)。事件 kind 见 memory/context/compactor.py。"""
+
+        def inc(key: str, n: float = 1) -> None:
+            c[key] = c.get(key, 0) + n
+
+        with self._lock:
+            c = self.record.ctx
+            if kind == "ctx_view":
+                inc("views")
+                c["max_est_tokens"] = max(c.get("max_est_tokens", 0), int(e.get("est_tokens", 0)))
+            elif kind == "ctx_est_error":
+                ratios = c.setdefault("est_error_ratios", [])
+                ratios.append(e.get("ratio"))
+                del ratios[:-20]
+            elif kind == "ctx_compacted":
+                inc("compactions")
+                inc("archived_rounds", int(e.get("rounds", 0)))
+                inc("facts_kept", int(e.get("facts_kept", 0)))
+                inc("facts_dropped", int(e.get("facts_dropped", 0)))
+                if e.get("fallback"):
+                    inc("fallbacks")
+            elif kind == "ctx_compaction_skipped":
+                inc("skipped")
+            elif kind == "ctx_readback":
+                inc("readbacks" if e.get("found") else "readback_misses")
+            elif kind == "ctx_summarizer_call":
+                inc("summarizer_calls")
+                inc("summarizer_ms", float(e.get("ms", 0)))
+                inc("summarizer_in_tokens", int(e.get("in_tokens", 0)))
+                inc("summarizer_out_tokens", int(e.get("out_tokens", 0)))
 
     def _on_reliability(self, event: dict) -> None:
         kind = event.get("kind")

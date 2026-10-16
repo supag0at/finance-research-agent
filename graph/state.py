@@ -28,3 +28,9 @@ class AgentState(TypedDict):
     # 为什么要落在 state 里而不是只存在 RunBudget 对象上?因为它是一次运行的
     # **决策记录** —— checkpointer 存的快照里应该能看出"这一轮为什么被收尾了"。
     stop_reason: str
+    # M8:上下文压缩 v2(memory/context/)。两者都无 reducer = 后写覆盖。
+    # turns 是每轮边界 [{start, body}],recall 追加;ctx 是压缩状态(归档/事实/失败),
+    # recall 重置、compress 更新。放进 state 而不是进程内缓存,是为了随 checkpointer 落库:
+    # 中断恢复、时间旅行回到任何快照,压缩状态都和当时的 messages 对得上。
+    turns: list[dict]
+    ctx: dict

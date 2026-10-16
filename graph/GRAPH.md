@@ -86,6 +86,12 @@ class AgentState(TypedDict):
 
 **代价**:多一个字段要维护。**收益**:历史可追溯,而模型仍然只看精简版。
 
+> **M8 补充**:压缩 v2 又加了 `turns`(每轮边界,recall 写)和 `ctx`(归档/事实/失败,compress 写)。
+> 压缩状态放进 state 而不是进程内缓存,是为了随 checkpointer 落库 —— 时间旅行回到任何快照,
+> 压缩状态都和当时的 messages 对得上。工具原文仍只存在 `messages` 里,
+> 视图里超长的结果只显示前 1500 字,模型可用 `read_tool_result` 工具按 id 回读。
+> 详见 `docs/design/M8-上下文压缩.md`。
+
 > `messages` 用了 `add_messages` reducer 所以是追加;`llm_input` 没有 reducer,
 > 默认就是后写覆盖前写。reducer 决定"新值怎么并入旧值",这是 LangGraph 里最容易忽略的一个概念。
 

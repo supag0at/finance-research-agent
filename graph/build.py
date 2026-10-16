@@ -11,6 +11,7 @@
     max_steps=8                     recursion_limit
 """
 
+import os
 from typing import Optional
 
 from langgraph.graph import END, START, StateGraph
@@ -19,6 +20,7 @@ from langgraph.prebuilt import ToolNode
 from graph.checkpoint import default_checkpointer
 from graph.model import build_chat_model
 from graph.nodes import (
+    COMPRESS_MODES,
     make_compress_node,
     make_finalize_node,
     make_plan_node,
@@ -36,22 +38,33 @@ def build_graph(
     use_long_term: bool = True,
     checkpointer: Optional[object] = None,
     memory_mode: Optional[str] = None,
+    compress_mode: Optional[str] = None,
+    tools: Optional[list] = None,
 ):
     """构造并编译图。
 
     checkpointer 决定状态存哪。不传则由 graph/checkpoint.py 按环境变量决定
     (默认 Postgres 落库,失败自动退回进程内)—— 见那个文件里关于
     "持久化执行"的说明。
+
+    tools 传入时直接作为业务工具,跳过 MCP / build_tools()。给回放评测用
+    (eval/compress_replay.py):同名同 schema 的确定性工具,结果可复现。
     """
     # M7 记忆档位:off=不用记忆;legacy=旧版(整段存、top3 召回);v2=新版(施工中)。
     mode = memory_mode or ("legacy" if use_long_term else "off")
     if mode not in ("off", "legacy", "v2"):
         raise ValueError(f"未知 memory_mode: {mode!r}(可选 off / legacy / v2)")
 
+    # M8 压缩档位。use_short_term=False 仍表示"不压缩",兼容旧调用方。
+    # 默认 v2(M8 验收后设定,见 docs/design/M8-上下文压缩.md §六);legacy 留作消融对照。
+    cmode = "off" if not use_short_term else (compress_mode or os.getenv("COMPRESS_MODE", "").strip() or "v2")
+    if cmode not in COMPRESS_MODES:
+        raise ValueError(f"未知 compress_mode: {cmode!r}(可选 {' / '.join(COMPRESS_MODES)})")
+
     # 工具来源二选一(M5.3)。开关式:MCP_TOOLS=1 才走 MCP,默认仍是进程内工具。
     # 两者产出的都是 StructuredTool,所以下面的装配代码完全不用区分。
-    tools = []
-    if mcp_enabled():
+    tools = list(tools) if tools else []
+    if not tools and mcp_enabled():
         tools = build_mcp_tools()  # 失败会返回空列表,不抛异常
     if not tools:
         tools = build_tools()
@@ -61,6 +74,11 @@ def build_graph(
         from memory.tools import search_memory
 
         tools = [*tools, search_memory]
+    if cmode == "v2":
+        # 顺序固定(业务工具 → search_memory → read_tool_result):工具 schema 也是前缀的一部分。
+        from memory.context.readback import read_tool_result
+
+        tools = [*tools, read_tool_result]
 
     base_model = build_chat_model()
     # bind_tools 就是把工具 schema 告诉模型 —— 对应手写版的 get_schemas()
@@ -69,7 +87,7 @@ def build_graph(
     builder = StateGraph(AgentState)
 
     builder.add_node("recall", make_recall_node(mode))
-    builder.add_node("compress", make_compress_node(use_short_term))
+    builder.add_node("compress", make_compress_node(cmode))
     builder.add_node("plan", make_plan_node(model_with_tools))
     builder.add_node("act", ToolNode(tools))  # 预置节点,自动并行执行多个工具调用
     # M6:强制收尾节点。刻意传**不带工具**的 base_model —— 从能力上拿掉"再调工具"

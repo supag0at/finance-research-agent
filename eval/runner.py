@@ -314,14 +314,18 @@ def render_markdown(summary: dict, results: list[dict], stamp: str) -> str:
             "",
             "## 逐题代价",
             "",
-            "| 用例 | LLM | 输入(缓存) | 输出 | 成本 | 工具(失败/重试) | 最慢节点 | 收尾方式 |",
-            "| --- | :-: | :-: | :-: | :-: | :-: | --- | --- |",
+            "| 用例 | LLM | 输入(缓存) | 输出 | 成本 | 工具(失败/重试) | 最慢节点 | 收尾方式 | 压缩 | 视图峰值 |",
+            "| --- | :-: | :-: | :-: | :-: | :-: | --- | --- | :-: | :-: |",
         ]
         for r in results:
             o = r.get("obs")
             if not o:
-                lines.append(f"| {r['id']} | - | - | - | - | - | - | - |")
+                lines.append(f"| {r['id']} | - | - | - | - | - | - | - | - | - |")
                 continue
+            # M8:压缩次数 = v2 归档次数 / legacy 摘要调用次数;视图峰值只有 v2 有(legacy 不估算)。
+            cx = o.get("ctx") or {}
+            squeezes = cx.get("compactions", cx.get("summarizer_calls", 0))
+            peak = cx.get("max_est_tokens") or "-"
             m = o["llm"]
             # 最后一列换成"怎么结束的":正常 / 预算提前收尾(有答案)/ 撞框架硬上限(无答案)。
             if o.get("hit_limit"):
@@ -334,7 +338,7 @@ def render_markdown(summary: dict, results: list[dict], stamp: str) -> str:
                 f"| {r['id']} | {m['calls']} | "
                 f"{m['prompt_tokens']}({m['cached_tokens']}) | "
                 f"{m['completion_tokens']} | {_fmt_cost(o.get('cost_cny'))} | "
-                f"{_tool_brief(o)} | {_slowest_node(o)} | {ending} |"
+                f"{_tool_brief(o)} | {_slowest_node(o)} | {ending} | {squeezes} | {peak} |"
             )
 
     # 失败/异常用例的详情,方便定位

@@ -8,36 +8,11 @@
 这些检查便宜、稳定、可回归,所以能用规则的就绝不用 LLM。
 """
 
-import re
-
+from core.numbers import meaningful_numbers as _meaningful_numbers
+from core.numbers import normalize as _normalize
 from core.schema import TrajectoryStep
 
-# 匹配"数字"的正则:整数或小数(逗号已在预处理里去掉)。
-_NUM_RE = re.compile(r"\d+(?:\.\d+)?")
-
-
-def _normalize(text: str) -> str:
-    """去掉千分位逗号,方便 '1,080' 和 '1080' 能对上。"""
-    return text.replace(",", "")
-
-
-def _meaningful_numbers(text: str) -> list[str]:
-    """从文本里抽取"有意义的财经数字"。
-
-    为降低误报,只保留:带小数点的数(如 224.41、7.5)或 >=100 的整数
-    (如 962、1080)。像 '3 个板块'、年份 '2026'、月份 '8' 这种通用小整数
-    不作为"是否编造"的判据(它们太常见,极易误伤)。
-    """
-    nums = []
-    for m in _NUM_RE.finditer(_normalize(text)):
-        tok = m.group()
-        try:
-            val = float(tok)
-        except ValueError:
-            continue
-        if "." in tok or val >= 100:
-            nums.append(tok)
-    return nums
+# 数字规则已迁到 core/numbers.py(M8 的压缩事实校验也要用,且必须与这里同一个判据)。
 
 
 def collect_observations(trajectory: list[TrajectoryStep]) -> str:
