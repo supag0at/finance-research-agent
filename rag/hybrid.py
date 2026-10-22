@@ -16,7 +16,9 @@ from dataclasses import dataclass, field
 
 from rag import db
 from rag.chunk import context_header
-from rag.config import QDRANT_COLLECTION_V2, RAG_TOP_K, RECALL_K, RERANK_CANDIDATES, RERANK_THRESHOLD
+from rag.config import (
+    QDRANT_COLLECTION_V2, RAG_TOP_K, RECALL_K, RERANK_CANDIDATES, RERANK_MODEL, RERANK_THRESHOLD,
+)
 from rag.embedding import embed_query
 from rag.fusion import rrf
 from rag.rerank import rerank
@@ -63,6 +65,7 @@ def search(
     use_rerank: bool = True,
     expand: bool = True,
     rerank_threshold: float | None = RERANK_THRESHOLD,
+    rerank_model: str = RERANK_MODEL,
 ) -> HybridResult:
     timings: dict[str, float] = {}
     degraded: list[str] = []
@@ -104,7 +107,7 @@ def search(
     if use_rerank and ranked:
         t = time.perf_counter()
         try:
-            scores = rerank(query, [_rerank_text(c.payload) for c in ranked])
+            scores = rerank(query, [_rerank_text(c.payload) for c in ranked], model=rerank_model)
             for c, s in zip(ranked, scores):
                 c.rerank_score = s
             ranked.sort(key=lambda c: -c.rerank_score)

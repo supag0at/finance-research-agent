@@ -78,13 +78,13 @@ def test_degrade() -> None:
     check("rerank 失败 → 仍返回结果", len(r.hits) == 4)
 
     hybrid.embed_query = boom
-    hybrid.rerank = lambda q, docs: [0.5] * len(docs)
+    hybrid.rerank = lambda q, docs, model=None: [0.5] * len(docs)
     r = hybrid.search("q", expand=False)
     check("embedding 失败 → degraded 记 dense,只剩 sparse 两条", r.degraded == ["dense"] and len(r.hits) == 2,
           f"{r.degraded} {[h['chunk_id'] for h in r.hits]}")
 
     hybrid.embed_query = lambda q: [0.0]
-    hybrid.rerank = lambda q, docs: [{"text C1": 0.9, "text C2": 0.2}.get(d.split("\n")[-1], 0.01) for d in docs]
+    hybrid.rerank = lambda q, docs, model=None: [{"text C1": 0.9, "text C2": 0.2}.get(d.split("\n")[-1], 0.01) for d in docs]
     r = hybrid.search("q", expand=False, rerank_threshold=0.1)
     check("阈值 0.1:只留 C1、C2,且 rerank 把顺序定为 C1 > C2", [h["chunk_id"] for h in r.hits] == ["C1", "C2"],
           str([h["chunk_id"] for h in r.hits]))

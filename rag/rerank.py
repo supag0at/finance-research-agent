@@ -17,14 +17,14 @@ from rag.config import EMBED_API_KEY, EMBED_BASE_URL, RERANK_MODEL
 _http = httpx.Client(trust_env=False, timeout=30)
 
 
-def rerank(query: str, documents: list[str]) -> list[float]:
-    """返回与 documents 一一对应的相关度分数(0~1)。"""
+def rerank(query: str, documents: list[str], model: str = RERANK_MODEL) -> list[float]:
+    """返回与 documents 一一对应的相关度分数(0~1)。model 可覆盖(Step 3 消融里 0.6B / 8B 同跑)。"""
     if not documents:
         return []
     resp = _http.post(
         f"{EMBED_BASE_URL}/rerank",
         headers={"Authorization": f"Bearer {EMBED_API_KEY}"},
-        json={"model": RERANK_MODEL, "query": query, "documents": documents, "return_documents": False},
+        json={"model": model, "query": query, "documents": documents, "return_documents": False},
     )
     resp.raise_for_status()
     scores = [0.0] * len(documents)

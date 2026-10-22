@@ -43,10 +43,13 @@ EMBED_BATCH = int(os.environ.get("EMBED_BATCH", "32"))
 # RAG_MODE:v1 = M3 原链路(定长切块 + dense,旧集合);hybrid = v2 集合 dense+sparse → RRF → rerank。
 # 默认值等 Step 3 消融出来再定,先保持 v1,不改变现有 Agent 行为。
 RAG_MODE = os.environ.get("RAG_MODE", "v1")
-RERANK_MODEL = os.environ.get("RERANK_MODEL", "Qwen/Qwen3-Reranker-0.6B")
+# 8B 而不是 0.6B(M9 §6.4):Hit@5 打平,但 MRR 0.871 vs 0.808,且只有 8B 的分数能设阈值;代价是时延 +1.1s。
+RERANK_MODEL = os.environ.get("RERANK_MODEL", "Qwen/Qwen3-Reranker-8B")
 RECALL_K = int(os.environ.get("RAG_RECALL_K", "30"))           # 每一路召回多少
 RERANK_CANDIDATES = int(os.environ.get("RAG_RERANK_CANDIDATES", "30"))  # RRF 后取多少进 rerank
 RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "5"))               # 最终给 LLM 几条
-# 低于该分的 rerank 结果丢弃。空 = 不丢(Step 3 标定前不拍脑袋定阈值)。
-_thr = os.environ.get("RAG_RERANK_THRESHOLD", "")
+# 低于该分的 rerank 结果丢弃。0.5 是 Step 3 在 8B 上标定的:留 98% 相关块、去 70% 不相关块(§6.4)。
+# 换回 0.6B 时要设成空(= 不丢):0.6B 的不相关块中位数就有 0.970,这个阈值对它没有意义。
+# 注意:阈值只是去噪,**不是拒答**——无答案题仍有 4/10 的 top1 过线,拒答靠 Step 4 的 grade。
+_thr = os.environ.get("RAG_RERANK_THRESHOLD", "0.5")
 RERANK_THRESHOLD = float(_thr) if _thr else None
