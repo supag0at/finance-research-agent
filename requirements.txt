@@ -27,3 +27,6 @@ langchain-mcp-adapters>=0.3
 # M6:可靠性强化。持久化检查点 —— 没它只能用内存检查点,
 # 那是"同一进程内的短期记忆",不是故障恢复能力。装不上会自动退回内存版(见 graph/checkpoint.py)。
 langgraph-checkpoint-postgres>=2.0
+
+# M9:A 股年报 PDF 解析(rag/parse.py)。只有 v2 入库用到。
+pymupdf>=1.24

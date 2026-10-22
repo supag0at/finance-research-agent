@@ -6,3 +6,5 @@ venv/
 .idea/
 .vscode/
 resume
+# M9:抓下来的原始语料(可用 rag/sources/fetch_*.py 重新下载)
+data/corpus/raw/

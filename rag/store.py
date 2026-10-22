@@ -31,6 +31,32 @@ class QdrantStore:
         )
         create.raise_for_status()
 
+    def ensure_collection_v2(self, dim: int = EMBED_DIM) -> None:
+        """M9:named vectors —— dense(余弦)+ sparse(Qdrant 端乘 idf)。
+
+        点的 vector 写成 {"dense": [...], "sparse": {"indices": [...], "values": [...]}}。
+        sparse 在 Step 2 才写入;Step 1 只写 dense,集合结构先一次建对,免得之后重建。
+        """
+        resp = self.http.get(f"/collections/{self.collection}")
+        if resp.status_code == 200:
+            return
+        create = self.http.put(
+            f"/collections/{self.collection}",
+            json={
+                "vectors": {"dense": {"size": dim, "distance": "Cosine"}},
+                "sparse_vectors": {"sparse": {"modifier": "idf"}},
+            },
+        )
+        create.raise_for_status()
+
+    def count(self, flt: dict | None = None) -> int:
+        body: dict = {"exact": True}
+        if flt:
+            body["filter"] = flt
+        resp = self.http.post(f"/collections/{self.collection}/points/count", json=body)
+        resp.raise_for_status()
+        return resp.json()["result"]["count"]
+
     def upsert(self, points: list[dict]) -> None:
         """写入/更新一批点。每个点形如:
         {"id": <uuid或int>, "vector": [...], "payload": {...}}

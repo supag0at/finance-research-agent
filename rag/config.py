@@ -32,3 +32,9 @@ PG_DSN = os.environ.get(
     "PG_DSN",
     "host=127.0.0.1 port=5432 dbname=newsrag user=postgres password=postgres",
 )
+
+# ④ M9:v2 语料(父子块 + 元数据 + dense/sparse 双向量)。
+# 旧集合 finance_corpus 是匿名单向量,加不了 sparse,保留作消融对照(M9 §4.2 第 0 行)。
+QDRANT_COLLECTION_V2 = os.environ.get("QDRANT_COLLECTION_V2", "finance_corpus_v2")
+CORPUS_RAW_DIR = os.environ.get("CORPUS_RAW_DIR", "data/corpus/raw")
+EMBED_BATCH = int(os.environ.get("EMBED_BATCH", "32"))

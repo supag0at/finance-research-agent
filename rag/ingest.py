@@ -28,6 +28,7 @@ def ingest_corpus(corpus_dir: str = "data/corpus") -> None:
     db.init_schema()
     store = QdrantStore()
     store.ensure_collection(EMBED_DIM)
+    store.ensure_index("source")  # 按 source 删旧点要用(幂等)
 
     files = sorted(Path(corpus_dir).glob("*.md"))
     if not files:
@@ -70,6 +71,12 @@ def ingest_corpus(corpus_dir: str = "data/corpus") -> None:
             )
             rows.append((cid, doc_id, i, chunk))
 
+        # ⚠️ M9 缺陷 10:先按 source 删掉这篇文档在 Qdrant 里的旧点,再写新点。
+        # chunk id = uuid5(source#index),upsert 只会覆盖"同号"的块;
+        # 新版本块数变少时(10 块 → 8 块),第 8、9 号旧点没人覆盖,会一直被检索到。
+        # Postgres 那边 upsert_document 已经删过旧 chunk,这里补上向量库这一侧。
+        # 放在 embedding 成功之后:embedding 失败时旧点还在,至少不会"整篇检索不到"。
+        store.delete_by_filter({"must": [{"key": "source", "match": {"value": source}}]})
         store.upsert(points)  # 向量进 Qdrant
         db.insert_chunks(rows)  # 原文进 Postgres
         # ⚠️ 顺序要紧:幂等标记必须在上面两步都成功之后才盖(M6 ⑥)。

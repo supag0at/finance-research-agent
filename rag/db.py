@@ -131,3 +131,123 @@ def insert_chunks(rows: list[tuple[str, int, int, str]]) -> None:
             rows,
         )
         conn.commit()
+
+
+# ---------------------------------------------------------------- M9:v2 表
+#
+# 为什么另起 fra_v2_* 而不是给 fra_documents 加列:幂等哈希按 source 记。
+# glossary 的三篇 .md 两条管线都要入库,共用一张表会让 v2 看到"v1 已入库"而跳过。
+# v1 表原样保留,作为消融对照(M9 §4.2 第 0 行)。
+
+def init_schema_v2() -> None:
+    with _connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS fra_v2_documents (
+                id           SERIAL PRIMARY KEY,
+                source       TEXT UNIQUE NOT NULL,   -- 相对 raw 目录的路径
+                ticker       TEXT,
+                company      TEXT,
+                doc_type     TEXT,                   -- 10-K / 10-Q / 年报 / 半年报 / glossary
+                fiscal_year  INTEGER,
+                fiscal_period TEXT,                  -- FY / Q2 / H1
+                period_end   DATE,
+                title        TEXT,
+                source_url   TEXT,
+                trust_level  TEXT,                   -- official / internal / web
+                lang         TEXT,
+                pages        INTEGER,
+                content_hash TEXT NOT NULL,          -- 原始文件字节的哈希;'' = 未完成入库
+                created_at   TIMESTAMPTZ DEFAULT now()
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS fra_v2_parents (
+                id          TEXT PRIMARY KEY,
+                doc_id      INTEGER REFERENCES fra_v2_documents(id) ON DELETE CASCADE,
+                section     TEXT,
+                page_start  INTEGER,
+                page_end    INTEGER,
+                text        TEXT NOT NULL
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS fra_v2_chunks (
+                id          TEXT PRIMARY KEY,        -- 与 Qdrant 点 id 一致
+                doc_id      INTEGER REFERENCES fra_v2_documents(id) ON DELETE CASCADE,
+                parent_id   TEXT REFERENCES fra_v2_parents(id) ON DELETE CASCADE,
+                chunk_index INTEGER NOT NULL,
+                page        INTEGER,
+                text        TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+
+
+_V2_META = ("ticker", "company", "doc_type", "fiscal_year", "fiscal_period", "period_end",
+            "title", "source_url", "trust_level", "lang", "pages")
+
+
+def upsert_document_v2(source: str, raw_hash: str, meta: dict) -> tuple[int, bool]:
+    """语义同 upsert_document(M6 ⑥):先清哈希、删旧父子块,成功后由 mark_ingested_v2 盖章。"""
+    vals = [meta.get(k) for k in _V2_META]
+    with _connect() as conn, conn.cursor() as cur:
+        cur.execute("SELECT id, content_hash FROM fra_v2_documents WHERE source = %s", (source,))
+        row = cur.fetchone()
+        if row is not None and row[1] == raw_hash:
+            return row[0], False
+        if row is None:
+            cur.execute(
+                f"INSERT INTO fra_v2_documents (source, {', '.join(_V2_META)}, content_hash) "
+                f"VALUES (%s, {', '.join(['%s'] * len(_V2_META))}, '') RETURNING id",
+                (source, *vals),
+            )
+            doc_id = cur.fetchone()[0]
+        else:
+            doc_id = row[0]
+            cur.execute(
+                f"UPDATE fra_v2_documents SET {', '.join(f'{k}=%s' for k in _V2_META)}, content_hash='' "
+                "WHERE id=%s",
+                (*vals, doc_id),
+            )
+            cur.execute("DELETE FROM fra_v2_parents WHERE doc_id=%s", (doc_id,))  # 级联删 chunks
+        conn.commit()
+        return doc_id, True
+
+
+def insert_parents_children_v2(doc_id: int, parents: list, children: list) -> None:
+    with _connect() as conn, conn.cursor() as cur:
+        cur.executemany(
+            "INSERT INTO fra_v2_parents (id, doc_id, section, page_start, page_end, text) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
+            [(p.id, doc_id, p.section, p.page_start, p.page_end, p.text) for p in parents],
+        )
+        cur.executemany(
+            "INSERT INTO fra_v2_chunks (id, doc_id, parent_id, chunk_index, page, text) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
+            [(c.id, doc_id, c.parent_id, c.index, c.page, c.text) for c in children],
+        )
+        conn.commit()
+
+
+def mark_ingested_v2(doc_id: int, raw_hash: str) -> None:
+    with _connect() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE fra_v2_documents SET content_hash=%s WHERE id=%s", (raw_hash, doc_id))
+        conn.commit()
+
+
+def get_parents_v2(parent_ids: list[str]) -> dict[str, dict]:
+    """small-to-big 用:子块命中后按 parent_id 取父块原文。"""
+    if not parent_ids:
+        return {}
+    with _connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, section, page_start, page_end, text FROM fra_v2_parents WHERE id = ANY(%s)",
+            (parent_ids,),
+        )
+        return {r[0]: {"section": r[1], "page_start": r[2], "page_end": r[3], "text": r[4]} for r in cur.fetchall()}
