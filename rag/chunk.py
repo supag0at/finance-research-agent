@@ -179,3 +179,15 @@ def _make_child(buf: list, parent: Parent, source: str, index: int) -> Child | N
         page=buf[0][1],
         text=text,
     )
+
+
+def context_header(meta: dict, section: str) -> str:
+    """contextual chunk header:"公司 文档类型 财年 期间 | 小节"。
+
+    子块正文里通常只有 "we"、"fiscal year 2026",没有公司名;拼上这一行再向量化 / 建 BM25 /
+    交给 rerank,才分得清 NVDA 和 AMD 里同样措辞的段落。meta 可以是入库时的元数据,也可以是 Qdrant payload。
+    """
+    if meta.get("doc_type") == "glossary":
+        return f"术语表 | {section}"
+    who = meta.get("company", "")
+    return f"{who} {meta['doc_type']} FY{meta.get('fiscal_year', '')} {meta.get('fiscal_period', '')} | {section}".strip()

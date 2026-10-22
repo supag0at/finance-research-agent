@@ -7,6 +7,7 @@
 这个函数会被注册成一个工具,让 Agent 在需要"背景知识/历史资料"时调用。
 """
 
+from rag.config import RAG_MODE
 from rag.embedding import embed_query
 from rag.store import QdrantStore
 
@@ -14,6 +15,19 @@ _store = QdrantStore()
 
 
 def retrieve(query: str, top_k: int = 4) -> list:
+    """按 RAG_MODE 分派(M9):v1 = 下面的原链路;hybrid = rag/hybrid.py。
+
+    返回形态向后兼容:每项都有 text / source / title / score;hybrid 额外带
+    chunk_id / section / page / fiscal_year / trust_level 等字段(不变式 5)。
+    """
+    if RAG_MODE == "hybrid":
+        from rag.hybrid import search
+
+        return search(query, top_k=top_k).hits
+    return _retrieve_v1(query, top_k)
+
+
+def _retrieve_v1(query: str, top_k: int = 4) -> list:
     """按语义检索知识库,返回最相关的若干段文本。
 
     参数:

@@ -49,6 +49,33 @@ class QdrantStore:
         )
         create.raise_for_status()
 
+    def update_vectors(self, points: list[dict]) -> None:
+        """只改点的某一路 named vector,payload 和其他向量不动。
+        每个点形如 {"id": ..., "vector": {"sparse": {...}}}。M9:给已入库的点补 sparse。"""
+        if not points:
+            return
+        resp = self.http.put(
+            f"/collections/{self.collection}/points/vectors?wait=true",
+            json={"points": points},
+        )
+        resp.raise_for_status()
+
+    def query(
+        self,
+        query,
+        using: str,
+        limit: int,
+        flt: dict | None = None,
+        with_payload: bool = True,
+    ) -> list[dict]:
+        """M9:Query API,按 named vector 检索。query 是 dense 列表或 sparse {indices, values}。"""
+        body: dict = {"query": query, "using": using, "limit": limit, "with_payload": with_payload}
+        if flt:
+            body["filter"] = flt
+        resp = self.http.post(f"/collections/{self.collection}/points/query", json=body)
+        resp.raise_for_status()
+        return resp.json()["result"]["points"]
+
     def count(self, flt: dict | None = None) -> int:
         body: dict = {"exact": True}
         if flt:

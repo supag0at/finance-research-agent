@@ -1,13 +1,14 @@
 """v2 离线建库管线(M9 Step 1)。
 
-    python -m rag.ingest_v2
+    python -m rag.ingest_v2                 # 增量入库(dense + sparse)
+    python -m rag.ingest_v2 --sparse-only   # 重算 avgdl,给库里所有点重写 sparse(不调 embedding)
 
 和 v1(rag/ingest.py)的区别:
   - 语料:SEC 10-K/10-Q(HTML)+ A 股年报/半年报(PDF)+ 原来的 3 篇术语 .md;
   - 解析:rag/parse.py 读出页码和标题层级,而不是把整篇当一串字符;
   - 切块:父子块(rag/chunk.build_parents / build_children);
   - 元数据:ticker / doc_type / fiscal_year / section / page / trust_level …,建 payload 索引;
-  - 向量:named vector "dense";"sparse" 留到 Step 2 写入;
+  - 向量:named vector "dense"(embedding)+ "sparse"(BM25 的 tf 项,见 rag/sparse.py,Step 2 加);
   - 存储:Qdrant finance_corpus_v2 + Postgres fra_v2_*。v1 的集合和表都不动(消融对照)。
 
 幂等沿用 M6 ⑥ + M9 缺陷 10 的顺序:清哈希 → 解析/切块/向量化 → 删旧点 → 写新点 → 写 Postgres → 盖章。
@@ -20,14 +21,16 @@ payload 里的 text 仍是原文,header 只影响向量。
 
 import hashlib
 import json
+import sys
 import time
 from pathlib import Path
 
 from rag import db
-from rag.chunk import build_children, build_parents
+from rag.chunk import build_children, build_parents, context_header
 from rag.config import CORPUS_RAW_DIR, EMBED_BATCH, EMBED_DIM, QDRANT_COLLECTION_V2
 from rag.embedding import embed_texts
 from rag.parse import parse
+from rag.sparse import doc_vector, load_avgdl, save_stats, tokenize
 from rag.store import QdrantStore
 
 # 解析 / 切块逻辑一改,就把版本号加一。幂等哈希 = 原始文件字节 + 这个版本号:
@@ -76,11 +79,7 @@ def _complete_meta(meta: dict, parsed_meta: dict, pages: int) -> dict:
     return m
 
 
-def _header(meta: dict, section: str) -> str:
-    if meta["doc_type"] == "glossary":
-        return f"术语表 | {section}"
-    who = meta.get("company", "")
-    return f"{who} {meta['doc_type']} FY{meta.get('fiscal_year', '')} {meta.get('fiscal_period', '')} | {section}".strip()
+_header = context_header  # 入库和检索(rerank 输入)必须用同一个 header,所以放在 rag/chunk.py
 
 
 def _embed_all(texts: list[str]) -> list[list[float]]:
@@ -110,12 +109,14 @@ def ingest_one(store: QdrantStore, path: Path, source: str, meta: dict) -> tuple
     parents = build_parents(parsed.blocks, source, lang)
     children = build_children(parents, source, lang)
     section_of = {p.id: p.section for p in parents}
-    vectors = _embed_all([f"{_header(meta, section_of[c.parent_id])}\n{c.text}" for c in children])
+    texts = [f"{_header(meta, section_of[c.parent_id])}\n{c.text}" for c in children]
+    vectors = _embed_all(texts)
+    avgdl = load_avgdl()  # 增量入库沿用库的 avgdl;全库重算用 --sparse-only
 
     points = [
         {
             "id": c.id,
-            "vector": {"dense": v},
+            "vector": {"dense": v, "sparse": doc_vector(t, avgdl)},
             "payload": {
                 "text": c.text, "doc_id": doc_id, "parent_id": c.parent_id, "chunk_index": c.index,
                 "section": section_of[c.parent_id], "page": c.page, "source": source,
@@ -123,7 +124,7 @@ def ingest_one(store: QdrantStore, path: Path, source: str, meta: dict) -> tuple
                                             "period_end", "title", "source_url", "trust_level", "lang")},
             },
         }
-        for c, v in zip(children, vectors)
+        for c, v, t in zip(children, vectors, texts)
     ]
     store.delete_by_filter({"must": [{"key": "source", "match": {"value": source}}]})  # 缺陷 10
     for i in range(0, len(points), 256):
@@ -156,5 +157,44 @@ def ingest_all() -> None:
           f"集合现有 {store.count()} 个点,用时 {time.time() - t0:.0f}s")
 
 
+def backfill_sparse() -> None:
+    """给库里所有点(重)写 sparse 向量:先扫一遍算 avgdl,再逐批 update_vectors。
+
+    sparse 的文本和 dense 用同一份(header + 子块原文),header 从 payload 还原,
+    所以不需要重新解析原始文件,也不调 embedding。
+    """
+    store = QdrantStore(collection=QDRANT_COLLECTION_V2)
+    t0 = time.time()
+    points, offset = [], None
+    while True:
+        body = {"limit": 2000, "with_payload": True, "with_vector": False}
+        if offset is not None:
+            body["offset"] = offset
+        r = store.http.post(f"/collections/{store.collection}/points/scroll", json=body).json()["result"]
+        points += r["points"]
+        offset = r.get("next_page_offset")
+        if offset is None:
+            break
+
+    texts = {p["id"]: f"{_header(p['payload'], p['payload'].get('section') or '')}\n{p['payload']['text']}"
+             for p in points}
+    lengths = [len(tokenize(t)) for t in texts.values()]
+    avgdl = sum(lengths) / len(lengths)
+    save_stats(avgdl, len(lengths))
+    print(f"{len(points)} 个点,平均 {avgdl:.1f} 词/块(最短 {min(lengths)},最长 {max(lengths)})")
+
+    batch = []
+    for pid, text in texts.items():
+        batch.append({"id": pid, "vector": {"sparse": doc_vector(text, avgdl)}})
+        if len(batch) == 500:
+            store.update_vectors(batch)
+            batch = []
+    store.update_vectors(batch)
+    print(f"sparse 写完,用时 {time.time() - t0:.0f}s")
+
+
 if __name__ == "__main__":
-    ingest_all()
+    if "--sparse-only" in sys.argv:
+        backfill_sparse()
+    else:
+        ingest_all()

@@ -38,3 +38,15 @@ PG_DSN = os.environ.get(
 QDRANT_COLLECTION_V2 = os.environ.get("QDRANT_COLLECTION_V2", "finance_corpus_v2")
 CORPUS_RAW_DIR = os.environ.get("CORPUS_RAW_DIR", "data/corpus/raw")
 EMBED_BATCH = int(os.environ.get("EMBED_BATCH", "32"))
+
+# ⑤ M9 Step 2:混合检索 + 重排。
+# RAG_MODE:v1 = M3 原链路(定长切块 + dense,旧集合);hybrid = v2 集合 dense+sparse → RRF → rerank。
+# 默认值等 Step 3 消融出来再定,先保持 v1,不改变现有 Agent 行为。
+RAG_MODE = os.environ.get("RAG_MODE", "v1")
+RERANK_MODEL = os.environ.get("RERANK_MODEL", "Qwen/Qwen3-Reranker-0.6B")
+RECALL_K = int(os.environ.get("RAG_RECALL_K", "30"))           # 每一路召回多少
+RERANK_CANDIDATES = int(os.environ.get("RAG_RERANK_CANDIDATES", "30"))  # RRF 后取多少进 rerank
+RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "5"))               # 最终给 LLM 几条
+# 低于该分的 rerank 结果丢弃。空 = 不丢(Step 3 标定前不拍脑袋定阈值)。
+_thr = os.environ.get("RAG_RERANK_THRESHOLD", "")
+RERANK_THRESHOLD = float(_thr) if _thr else None
