@@ -14,6 +14,19 @@ from rag.store import QdrantStore
 _store = QdrantStore()
 
 
+_DESCRIPTIONS = {
+    False: "从本地知识库按语义检索背景资料(公司背景、行业知识、术语解释等)。需要背景知识时调用。",
+    True: (
+        "检索本地财报知识库:NVDA/AMD/INTC/AVGO/MU 的 10-K、10-Q,寒武纪/中芯国际/海光信息的年报、半年报,"
+        "以及术语表。问财报里的数字、业务、原因,或两家公司对比时调用,直接传用户的原问题即可(内部会拆解、改写)。"
+        "返回带 ref 编号的证据,最后一项是汇总(coverage 里 missing 的部分表示没找到)。实时股价、今天的新闻不要用它。"
+    ),
+}
+# 工具描述跟着 RAG_MODE 走:agentic 模式下要告诉模型库里有什么、直接传原问题、怎么读汇总。
+# 放在这里而不是 graph/ 下:手写版 main.py 也要用,而手写版不依赖 LangChain。
+RETRIEVE_DESC = _DESCRIPTIONS[RAG_MODE == "agentic"]
+
+
 def retrieve(query: str, top_k: int = 4) -> list:
     """按 RAG_MODE 分派(M9):v1 = 下面的原链路;hybrid = rag/hybrid.py。
 
@@ -24,6 +37,12 @@ def retrieve(query: str, top_k: int = 4) -> list:
         from rag.hybrid import search
 
         return search(query, top_k=top_k).hits
+    if RAG_MODE == "agentic":
+        # 子图自己决定每个需求取几条(单需求 5 条、多需求各 3 条),top_k 不再生效。
+        # 返回的最后一项是 type=summary 的汇总:覆盖情况、缺失、来源性质、降级。
+        from rag.agentic.build import run
+
+        return run(query)
     return _retrieve_v1(query, top_k)
 
 

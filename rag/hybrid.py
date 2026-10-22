@@ -66,7 +66,10 @@ def search(
     expand: bool = True,
     rerank_threshold: float | None = RERANK_THRESHOLD,
     rerank_model: str = RERANK_MODEL,
+    dense_query: str | None = None,
 ) -> HybridResult:
+    """dense_query:只给 dense 那一路换一个查询文本(M9 Step 4 的 HyDE 用:拿"假想答案"去做向量检索),
+    sparse 和 rerank 仍用原 query。"""
     timings: dict[str, float] = {}
     degraded: list[str] = []
     trace: dict[str, Candidate] = {}
@@ -79,7 +82,7 @@ def search(
     if use_dense:
         t = time.perf_counter()
         try:
-            pts = _store.query(embed_query(query), "dense", RECALL_K, flt)
+            pts = _store.query(embed_query(dense_query or query), "dense", RECALL_K, flt)
             for r, p in enumerate(pts, 1):
                 c = cand(p)
                 c.dense_rank, c.dense_score = r, p["score"]

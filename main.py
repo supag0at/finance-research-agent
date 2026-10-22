@@ -13,7 +13,8 @@ from dotenv import load_dotenv
 from core.agent import Agent
 from core.llm import LLM
 from core.schema import TrajectoryStep
-from rag.retrieve import retrieve
+from rag.config import RAG_MODE
+from rag.retrieve import RETRIEVE_DESC, retrieve
 from tools import finance
 from tools.fallbacks import stock_fallback as _stock_fallback
 from tools.registry import ToolRegistry
@@ -79,7 +80,7 @@ def build_agent() -> Agent:
     # 对 Agent 来说,RAG 就是又一个平平无奇的工具——这正是解耦的好处。
     tools.register(
         name="retrieve",
-        description="从本地知识库按语义检索背景资料(公司背景、行业知识、术语解释等)。需要背景知识时调用。",
+        description=RETRIEVE_DESC,  # 与 LangGraph 版共用同一份描述(M9)
         parameters={
             "type": "object",
             "properties": {
@@ -89,8 +90,8 @@ def build_agent() -> Agent:
             "required": ["query"],
         },
         func=retrieve,
-        timeout=20.0,
-        retries=1,
+        timeout=60.0 if RAG_MODE == "agentic" else 20.0,  # 理由见 graph/tool_adapters.py
+        retries=0 if RAG_MODE == "agentic" else 1,
     )
 
     # 工具变多了,把最大步数放宽一点,给它更充分的调研空间。

@@ -53,3 +53,11 @@ RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "5"))               # 最终给 LLM 
 # 注意:阈值只是去噪,**不是拒答**——无答案题仍有 4/10 的 top1 过线,拒答靠 Step 4 的 grade。
 _thr = os.environ.get("RAG_RERANK_THRESHOLD", "0.5")
 RERANK_THRESHOLD = float(_thr) if _thr else None
+
+# ⑥ M9 Step 4:Agentic RAG 子图(RAG_MODE=agentic)。
+RAG_MAX_ROUNDS = int(os.environ.get("RAG_MAX_ROUNDS", "2"))        # 检索总轮数(含首轮)
+RAG_FAST_PATH = float(os.environ.get("RAG_FAST_PATH", "0.9"))      # 单需求 + 过滤有效 + top1 ≥ 此值 → 跳过 grade
+RAG_DEADLINE_S = float(os.environ.get("RAG_DEADLINE_S", "30"))     # 子图总时限;超时不再改写重检
+RAG_WEB_FALLBACK = os.environ.get("RAG_WEB_FALLBACK", "1") == "1"  # 轮数用尽仍缺 → search_news
+RAG_HYDE = os.environ.get("RAG_HYDE", "0") == "1"                  # 消融开关,默认关
+RAG_EVIDENCE_CHARS = int(os.environ.get("RAG_EVIDENCE_CHARS", "9000"))  # 证据总预算(~3000 token)

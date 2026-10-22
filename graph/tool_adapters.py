@@ -25,7 +25,8 @@ from pydantic import BaseModel, Field
 from core.failure import FAIL_PREFIX
 from core.reliability import run_reliably
 from core.sandbox import wrap_untrusted
-from rag.retrieve import retrieve
+from rag.config import RAG_MODE
+from rag.retrieve import RETRIEVE_DESC, retrieve
 from tools import finance
 from tools.fallbacks import stock_fallback
 
@@ -123,9 +124,11 @@ def build_tools() -> list[StructuredTool]:
         _reliable_tool(
             retrieve,
             name="retrieve",
-            description="从本地知识库按语义检索背景资料(公司背景、行业知识、术语解释等)。需要背景知识时调用。",
+            description=RETRIEVE_DESC,
             args_schema=RetrieveArgs,
-            timeout=20.0,
-            retries=1,
+            # M9:agentic 子图内部有分析 / 评估 / 改写 / 联网,单次就可能 30s+,而且自己会降级;
+            # 外层再按 20s 超时重试只会把同一个问题跑两遍。
+            timeout=60.0 if RAG_MODE == "agentic" else 20.0,
+            retries=0 if RAG_MODE == "agentic" else 1,
         ),
     ]
