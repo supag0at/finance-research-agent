@@ -89,6 +89,10 @@ class RunRecord:
     # 同 memory:摘要/归档调用走 core.LLM,不在 llm.calls / cost 里,
     # 真实成本 = cost + 这里的 summarizer_in_tokens / summarizer_out_tokens。
     ctx: dict = field(default_factory=dict)
+    # M9:本轮 agentic 检索子图的汇总(rag/agentic/build.run 发出的 rag_run 事件)。空 dict = 没走 agentic。
+    # 子图里的 LLM 调用(analyze / grade / rewrite)直接走 openai client,同样不在 llm.calls / cost 里,
+    # 真实成本 = cost + 这里的 llm_tokens。
+    rag: dict = field(default_factory=dict)
 
     llm_calls: int = 0
     prompt_tokens: int = 0
@@ -242,6 +246,7 @@ class RunRecord:
             "budget": self.budget or None,
             "memory": self.memory or None,
             "ctx": self.ctx or None,
+            "rag": self.rag or None,
             "llm": {
                 "calls": self.llm_calls,
                 "ms": round(self.llm_ms, 1),

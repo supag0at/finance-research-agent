@@ -9,6 +9,7 @@ from functools import lru_cache
 
 from langgraph.graph import END, START, StateGraph
 
+from memory import events
 from rag.agentic import nodes
 from rag.agentic.state import RagState
 
@@ -39,4 +40,11 @@ def run(question: str, opts: dict | None = None, full_state: bool = False):
     state = build().invoke({"question": question, "t0": time.time(), "opts": opts or {},
                             "degraded": [], "notes": [], "events": [], "llm_tokens": 0},
                            config={"recursion_limit": 20})
+    sm = state["output"][-1]
+    status = [v["status"] for v in sm["coverage"].values()]
+    # 观测:子图的 LLM 调用不走 LangChain,ObsHandler 看不到,这里主动报给 RunRecord.rag(M5.2 的原则:
+    # 观测放在知道真相的那一层)。memory.events 只是一个通用的 emit/observer,没人听时零开销。
+    events.emit("rag_run", rounds=sm["rounds"], llm_tokens=sm["llm_tokens"], latency_ms=sm["latency_ms"],
+                needs=len(status), missing=status.count("missing"), web=status.count("web_only"),
+                fast_path=any("快速通道" in e for e in state.get("events") or []), degraded=sm["degraded"])
     return state if full_state else state["output"]

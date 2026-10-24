@@ -43,6 +43,7 @@ MIN_COMPLETENESS = 3  # 完整性至少 3/5
 # 必须同时卡"有没有把事办成"的维度。
 
 _CASES_PATH = Path(__file__).parent / "cases.jsonl"
+_RAG_CASES_PATH = Path(__file__).parent / "rag_cases.jsonl"
 _REPORTS_DIR = Path(__file__).parent / "reports"
 
 
@@ -114,6 +115,8 @@ def evaluate_one(agent, judge_llm: LLM, case: dict) -> dict:
         "checks": checks,
         "judge": judged,
         "passed": is_pass(case, checks, judged),
+        # M9:同样的门槛,只把数字溯源换成单位感知版("270.29 亿美元" 能对上 "$27,029 million")
+        "passed_unit": is_pass(case, {**checks, "grounded_ratio": checks["grounded_ratio_unit"]}, judged),
         "obs": rec.to_json() if rec is not None else None,
     }
 
@@ -388,7 +391,11 @@ def main() -> None:
     agent.use_long_term = False
     judge_llm = LLM()
 
-    cases = load_cases()
+    # --rag:跑 M9 的检索端到端题(eval/rag_cases.jsonl)。检索模式由环境变量 RAG_MODE 决定(v1 / hybrid / agentic),
+    # 报告里会记下来;同一份题跑三种模式,用 eval/rag_e2e_compare.py 汇总对比。
+    use_rag = "--rag" in args
+    args.discard("--rag")
+    cases = load_cases(_RAG_CASES_PATH if use_rag else _CASES_PATH)
     # 支持只跑指定用例(命令行传用例 id),方便快速迭代,不必每次全量跑。
     only = args
     if only:
@@ -411,9 +418,13 @@ def main() -> None:
 
     summary = summarize(results)
     summary["impl"] = impl  # 记录被测实现,回归对比时必须知道跑的是哪一版
+    from rag.config import RAG_MODE
+
+    summary["rag_mode"] = RAG_MODE
+    summary["cases"] = "rag" if use_rag else "default"
 
     _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S") + (f"_rag-{RAG_MODE}" if use_rag else "")
     (_REPORTS_DIR / f"{stamp}.json").write_text(
         json.dumps({"summary": summary, "results": results}, ensure_ascii=False, indent=2),
         encoding="utf-8",

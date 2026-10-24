@@ -98,6 +98,10 @@ class ObsHandler(BaseCallbackHandler):
     def _on_memory(self, event: dict) -> None:
         """记忆事件 → RunRecord.memory 计数(M7)。事件 kind 见 memory/events.py。"""
         kind = str(event.get("kind", ""))
+        if kind.startswith("rag_"):
+            self._on_rag(event)
+            logger.log_event(kind, self.record.run_id, **{k: v for k, v in event.items() if k != "kind"})
+            return
         if kind.startswith("ctx_"):
             self._on_ctx(kind, event)
             logger.log_event(kind, self.record.run_id, **{k: v for k, v in event.items() if k != "kind"})
@@ -143,6 +147,17 @@ class ObsHandler(BaseCallbackHandler):
                 inc("summarizer_ms", float(e.get("ms", 0)))
                 inc("summarizer_in_tokens", int(e.get("in_tokens", 0)))
                 inc("summarizer_out_tokens", int(e.get("out_tokens", 0)))
+
+    def _on_rag(self, e: dict) -> None:
+        """agentic 检索子图 → RunRecord.rag(M9)。一次 retrieve 调用发一条 rag_run。"""
+        with self._lock:
+            r = self.record.rag
+            r["runs"] = r.get("runs", 0) + 1
+            for key in ("rounds", "llm_tokens", "latency_ms", "needs", "missing", "web"):
+                r[key] = r.get(key, 0) + int(e.get(key, 0) or 0)
+            r["fast_path"] = r.get("fast_path", 0) + int(bool(e.get("fast_path")))
+            for d in e.get("degraded") or []:
+                r.setdefault("degraded", {})[d] = r.setdefault("degraded", {}).get(d, 0) + 1
 
     def _on_reliability(self, event: dict) -> None:
         kind = event.get("kind")
