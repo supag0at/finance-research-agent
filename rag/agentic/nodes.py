@@ -398,4 +398,7 @@ def pack(state: RagState) -> RagState:
         "rounds": state.get("round", 0), "llm_tokens": state.get("llm_tokens", 0),
         "latency_ms": round((time.time() - state["t0"]) * 1000),
     }
-    return {"output": out + [summary]}
+    # summary 放在**最前面**(M9 §7.8):主 Agent 的上下文对长工具结果只显示开头一段,
+    # 放末尾的话,coverage / notes 这些"哪些没找到、哪些不可靠"的信息恰好最先被截掉。
+    summary["evidence_refs"] = [e["ref"] for e in out]
+    return {"output": [summary] + out}

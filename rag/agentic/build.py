@@ -36,11 +36,11 @@ def build():
 
 
 def run(question: str, opts: dict | None = None, full_state: bool = False):
-    """返回证据列表(末尾一条 summary);full_state=True 时返回整个子图状态(评测 / 演示用)。"""
+    """返回证据列表(第一条是 summary,之后是证据);full_state=True 时返回整个子图状态(评测 / 演示用)。"""
     state = build().invoke({"question": question, "t0": time.time(), "opts": opts or {},
                             "degraded": [], "notes": [], "events": [], "llm_tokens": 0},
                            config={"recursion_limit": 20})
-    sm = state["output"][-1]
+    sm = state["output"][0]  # summary 在最前(pack)
     status = [v["status"] for v in sm["coverage"].values()]
     # 观测:子图的 LLM 调用不走 LangChain,ObsHandler 看不到,这里主动报给 RunRecord.rag(M5.2 的原则:
     # 观测放在知道真相的那一层)。memory.events 只是一个通用的 emit/observer,没人听时零开销。

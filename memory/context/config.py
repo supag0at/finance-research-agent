@@ -30,6 +30,24 @@ def _env_num(key: str, default: float) -> float:
     return v if v > 0 else default
 
 
+# 按工具覆盖预览长度(M9 追踪发现,docs/design/M9-AgenticRAG.md §7.8)。
+# 1500 是从 M3 的截断沿用来的,对 fetch_page 这种"整页网页、有用的只占一小段"合适;
+# 但 retrieve 的输出已经被 rerank 筛过、按 9000 字限额打包过,再截到 1500,主 Agent 只看得到第一条证据,
+# 末尾的 summary 也看不到。所以已经自带长度上限的工具单独放宽。
+# 格式:CTX_PREVIEW_BY_TOOL="retrieve=12000,fetch_page=1500";没列的工具用 preview_chars。
+_DEFAULT_PREVIEW_BY_TOOL = "retrieve=12000"
+
+
+def tool_preview_chars(tool_name: str | None, default: int) -> int:
+    """某个工具的预览长度。现读环境变量(和 from_env 一样,评测改了就生效)。"""
+    raw = os.getenv("CTX_PREVIEW_BY_TOOL", _DEFAULT_PREVIEW_BY_TOOL)
+    for item in raw.split(","):
+        name, _, value = item.partition("=")
+        if name.strip() == tool_name and value.strip().isdigit():
+            return int(value)
+    return default
+
+
 @dataclass(frozen=True)
 class ContextConfig:
     high_tokens: int = 20000  # 越过它才归档

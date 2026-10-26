@@ -67,8 +67,8 @@ def main() -> None:
               f"| {_f(_mean(t.get('llm_tokens', 0) for t in rag_tok), '{:.0f}')} |")
 
     print("\n## 工具使用与真实成本\n")
-    print("| 模式 | 工具调用/题 | 联网(search_news + fetch_page)/题 | 知识库题里全程没联网的 | LLM 调用/题 | 主 Agent token/题 | 子图 token/题 | 估算总成本 ¥/题 |")
-    print("| --- | --- | --- | --- | --- | --- | --- | --- |")
+    print("| 模式 | 工具调用/题 | 联网(search_news + fetch_page)/题 | 知识库题里全程没联网的 | 回读/题 | LLM 调用/题 | 主 Agent token/题 | 子图 token/题 | 估算总成本 ¥/题 |")
+    print("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     web_tools = {"search_news", "fetch_page"}
     kb_ids = {x["id"] for x in next(iter(reports.values()))["results"]} - _NON_KB
     for m, r in reports.items():
@@ -80,7 +80,8 @@ def main() -> None:
         no_web = sum(1 for x in res if x["id"] in kb_ids and not web_tools & set(x["checks"]["tools_used"]))
         print(f"| {m} | {_mean(len(x['checks']['tools_used']) for x in res):.1f} "
               f"| {_mean(sum(t in web_tools for t in x['checks']['tools_used']) for x in res):.1f} "
-              f"| {no_web}/{len(kb_ids)} | {_mean(o['llm']['calls'] for o in obs):.1f} | {_mean(tok):.0f} "
+              f"| {no_web}/{len(kb_ids)} | {_mean(((o.get('ctx') or {}).get('readbacks', 0)) for o in obs):.1f} "
+              f"| {_mean(o['llm']['calls'] for o in obs):.1f} | {_mean(tok):.0f} "
               f"| {_mean(rag_tok):.0f} | {_mean((o.get('cost_cny') or 0) + t * price for o, t in zip(obs, rag_tok)):.4f} |")
 
     print("\n## 逐题(PASS / accuracy / faithfulness)\n")

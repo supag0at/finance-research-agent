@@ -94,10 +94,10 @@ def show_subgraph(st: dict, searches: list[dict], llm_calls: list[dict]) -> None
             _p(f"| {r['dense'] or '—'} | {r['sparse'] or '—'} | {r['rrf'] or '—'} | {r['rerank'] or '—'} | {sc} "
                f"| {r['title']} | {r['page']} | {r['text'][:60]} |")
     _p("\n### 交给主 Agent 的证据")
-    for e in st["output"][:-1]:
+    for e in st["output"][1:]:
         _p(f"- [{e['ref']}] {e['need']} {e['trust_level']} {e['score']} {e['title']} p.{e['page']} | "
            f"{e['section'][-50:]} | 父块 {len(e['text'])} 字符")
-    sm = st["output"][-1]
+    sm = st["output"][0]
     _p(f"\n### summary\n```json\n{json.dumps({k: v for k, v in sm.items() if k not in ('text', 'source', 'title', 'score')}, ensure_ascii=False, indent=1)}\n```")
 
 

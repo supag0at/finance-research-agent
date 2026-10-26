@@ -43,8 +43,8 @@ def run_one(cfg, q: str) -> dict:
                 "tokens": 0, "rounds": 1, "coverage": {}, "events": [], "dropped_ids": []}
     st = run(q, opts=cfg, full_state=True)
     out = st["output"]
-    sm = out[-1]
-    kept = [e["chunk_id"] for e in out[:-1] if e.get("chunk_id")]
+    sm = out[0]
+    kept = [e["chunk_id"] for e in out[1:] if e.get("chunk_id")]
     # 被判 missing 而没交出去的块(用来算"误拒")
     dropped = [h["chunk_id"] for n in st["needs"] if sm["coverage"][n["id"]]["status"] == "missing" for h in n["hits"]]
     return {"ids": kept, "ms": sm["latency_ms"], "tokens": sm["llm_tokens"], "rounds": sm["rounds"],

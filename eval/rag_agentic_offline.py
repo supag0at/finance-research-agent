@@ -75,7 +75,7 @@ def setup(script: Script, search_fn, web=None) -> tuple[Script, FakeSearch]:
 
 
 def summary(out: list[dict]) -> dict:
-    return out[-1]
+    return out[0]
 
 
 ANALYZE_NVDA = {"intent": "kb_fact", "needs": [{"desc": "NVDA FY2026 数据中心收入", "queries": ["NVIDIA FY2026 data center revenue"],
@@ -128,7 +128,7 @@ def test_grade_failure() -> None:
     print("⑤ grade 失败 → 放行现有证据")
     s, fs = setup(Script(analyze=[ANALYZE_NVDA], grade=[ValueError("坏 JSON")]), lambda q, f: ([hit("c1", 0.6)], []))
     out = run("q")
-    check("degraded 记 grade,证据照常返回", "grade" in summary(out)["degraded"] and out[0]["chunk_id"] == "c1")
+    check("degraded 记 grade,证据照常返回", "grade" in summary(out)["degraded"] and out[1]["chunk_id"] == "c1")
     check("没有进入改写", "rewrite" not in s.calls)
 
 
@@ -146,8 +146,8 @@ def test_rewrite_then_web() -> None:
     check("第 2 轮按改写要求去掉了 fiscal_year,ticker 保留",
           all([c["key"] for c in f["must"]] == ["ticker"] for _, f in second), str(second))
     check("rounds = 2", summary(out)["rounds"] == 2)
-    check("证据只剩网页,trust_level=web", [e["trust_level"] for e in out[:-1]] == ["web"], str([e["trust_level"] for e in out[:-1]]))
-    check("被判 missing 的知识库证据不交给主 Agent", all(e["chunk_id"] is None for e in out[:-1]))
+    check("证据只剩网页,trust_level=web", [e["trust_level"] for e in out[1:]] == ["web"], str([e["trust_level"] for e in out[1:]]))
+    check("被判 missing 的知识库证据不交给主 Agent", all(e["chunk_id"] is None for e in out[1:]))
     check("coverage = web_only", summary(out)["coverage"]["n1"]["status"] == "web_only")
 
 
@@ -198,12 +198,13 @@ def test_pack_shape() -> None:
     s, fs = setup(Script(analyze=[two], grade=[{"needs": [{"id": "n1", "status": "sufficient"}, {"id": "n2", "status": "sufficient"}]}]),
                   lambda q, f: ([hit("same", 0.9), hit(q, 0.8)], []))
     out = run("A 和 B 对比")
-    ev, sm = out[:-1], out[-1]
+    sm, ev = out[0], out[1:]
     check("ref 从 1 连续编号", [e["ref"] for e in ev] == list(range(1, len(ev) + 1)))
     check("两个需求共同命中的块只出现一次", sum(e["chunk_id"] == "same" for e in ev) == 1)
     check("每项都有 text / source / title / score(向后兼容)", all({"text", "source", "title", "score"} <= set(e) for e in out))
     check("每条证据都有 chunk_id 或是 web", all(e["chunk_id"] or e["trust_level"] == "web" for e in ev))
-    check("最后一项是 summary", sm["type"] == "summary" and set(sm["coverage"]) == {"n1", "n2"})
+    check("第一项是 summary(M9 §7.8:放末尾会被截掉)", sm["type"] == "summary" and set(sm["coverage"]) == {"n1", "n2"})
+    check("summary 列出证据 ref", sm["evidence_refs"] == [e["ref"] for e in ev])
 
 
 def main() -> None:

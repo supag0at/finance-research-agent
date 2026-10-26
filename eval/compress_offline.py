@@ -457,6 +457,34 @@ def scenario_readback() -> None:
           str(entries[1]))
 
 
+def scenario_tool_preview_override() -> None:
+    print("\nS9 · 按工具配置预览长度(M9 §7.8:retrieve 不该被截到 1500)")
+    from memory.context.view import render_tool
+
+    long_text = "x" * 9000
+    page = render_tool(ToolMessage(content=long_text, tool_call_id="p1", name="fetch_page"), 1500)
+    rag = render_tool(ToolMessage(content=long_text, tool_call_id="r1", name="retrieve"), 1500)
+    check("fetch_page 仍截到 1500 + stub", len(page.content) < 1800 and "read_tool_result" in page.content)
+    check("retrieve 9000 字原样保留(默认上限 12000)", rag.content == long_text)
+    huge = render_tool(ToolMessage(content="y" * 15000, tool_call_id="r2", name="retrieve"), 1500)
+    check("retrieve 超过 12000 才截,stub 的 offset 跟着是 12000",
+          huge.content.startswith("y" * 12000) and "offset=12000" in huge.content, huge.content[-80:])
+    import os
+
+    old = os.environ.get("CTX_PREVIEW_BY_TOOL")
+    os.environ["CTX_PREVIEW_BY_TOOL"] = "fetch_page=3000"
+    try:
+        page2 = render_tool(ToolMessage(content=long_text, tool_call_id="p2", name="fetch_page"), 1500)
+        rag2 = render_tool(ToolMessage(content=long_text, tool_call_id="r3", name="retrieve"), 1500)
+    finally:
+        if old is None:
+            os.environ.pop("CTX_PREVIEW_BY_TOOL")
+        else:
+            os.environ["CTX_PREVIEW_BY_TOOL"] = old
+    check("环境变量可覆盖:fetch_page=3000", page2.content.startswith("x" * 3000) and "offset=3000" in page2.content)
+    check("环境变量里没列的工具回到默认 1500", "offset=1500" in rag2.content)
+
+
 def main() -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -478,6 +506,7 @@ def main() -> int:
         scenario_fact_verification,
         scenario_archive_fallback,
         scenario_readback,
+        scenario_tool_preview_override,
     ):
         fn()
     print("\n" + "=" * 62)

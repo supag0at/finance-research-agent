@@ -20,6 +20,7 @@ from typing import Optional
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage, ToolMessage
 
+from memory.context.config import tool_preview_chars
 from memory.context.rounds import head_slice
 from memory.context.tokens import text_of
 from memory.context.types import ArchiveEntry, CtxState, Fact, FailureNote, TurnBound
@@ -37,8 +38,10 @@ NO_ANSWER = "(该轮未产出结论)"
 
 
 def render_tool(msg: ToolMessage, preview_chars: int) -> ToolMessage:
-    """超长工具结果只显示前 N 字 + stub。只取决于消息自身,所以写入后永不变。"""
+    """超长工具结果只显示前 N 字 + stub。只取决于消息自身(含工具名),所以写入后永不变。
+    N 默认是 preview_chars,个别工具在 config.tool_preview_chars 里单独配置(M9:retrieve 放宽)。"""
     text = text_of(msg.content)
+    preview_chars = tool_preview_chars(msg.name, preview_chars)
     if len(text) <= preview_chars:
         return msg
     stub = STUB_TEMPLATE.format(id=msg.tool_call_id, n=len(text), preview=preview_chars)

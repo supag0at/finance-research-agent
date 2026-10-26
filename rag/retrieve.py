@@ -19,7 +19,7 @@ _DESCRIPTIONS = {
     True: (
         "检索本地财报知识库:NVDA/AMD/INTC/AVGO/MU 的 10-K、10-Q,寒武纪/中芯国际/海光信息的年报、半年报,"
         "以及术语表。问财报里的数字、业务、原因,或两家公司对比时调用,直接传用户的原问题即可(内部会拆解、改写)。"
-        "返回带 ref 编号的证据,最后一项是汇总(coverage 里 missing 的部分表示没找到)。实时股价、今天的新闻不要用它。"
+        "返回带 ref 编号的证据,第一项是汇总(coverage 里 missing 的部分表示没找到),之后是证据。实时股价、今天的新闻不要用它。"
     ),
 }
 # 工具描述跟着 RAG_MODE 走:agentic 模式下要告诉模型库里有什么、直接传原问题、怎么读汇总。
@@ -36,14 +36,20 @@ def retrieve(query: str, top_k: int = 4) -> list:
     if RAG_MODE == "hybrid":
         from rag.hybrid import search
 
-        return search(query, top_k=top_k).hits
+        return _for_agent(search(query, top_k=top_k).hits)
     if RAG_MODE == "agentic":
         # 子图自己决定每个需求取几条(单需求 5 条、多需求各 3 条),top_k 不再生效。
-        # 返回的最后一项是 type=summary 的汇总:覆盖情况、缺失、来源性质、降级。
+        # 返回的第一项是 type=summary 的汇总:覆盖情况、缺失、来源性质、降级。
         from rag.agentic.build import run
 
-        return run(query)
+        return _for_agent(run(query))
     return _retrieve_v1(query, top_k)
+
+
+def _for_agent(items: list[dict]) -> list[dict]:
+    """交给主 Agent 前去掉 child_text:它是父块 text 的子串,原样再给一遍只会让工具结果翻倍变长
+    (M9 §7.8:retrieve 返回 11~16k 字,其中一大块是这份重复)。内部的 grade 仍然用 child_text。"""
+    return [{k: v for k, v in d.items() if k != "child_text"} for d in items]
 
 
 def _retrieve_v1(query: str, top_k: int = 4) -> list:

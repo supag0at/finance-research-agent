@@ -35,7 +35,7 @@ def collect_observations(trajectory: list[TrajectoryStep]) -> str:
 def build_judge_facts(
     trajectory: list[TrajectoryStep],
     max_per_obs: int = 4000,
-    max_total: int = 30000,
+    max_total: int = 60000,
 ) -> str:
     """给 LLM 裁判用的"精炼版事实依据"。
 
@@ -44,7 +44,16 @@ def build_judge_facts(
       1. 去重:相同的工具返回只保留一次(如反复搜同关键词);
       2. 单条限长:一篇超长网页正文截断到 max_per_obs,避免一条挤占全部预算;
       3. 总量限长:所有证据合计不超过 max_total。
+
+    M9 修过两处(docs/design/M9-AgenticRAG.md §6.7):
+      - 单条上限按工具取 max(max_per_obs, 主 Agent 能看到的预览长度)。原则:**裁判看到的证据至少要和
+        被测 Agent 看到的一样多**——否则 retrieve 放宽到 12000 字后,裁判只看前 4000 字,
+        回答里正确引用的数字会被判"依据中未出现"(实测裁判只看到 35~45% 的证据)。
+      - 去重从"前 200 字"改成整段比较:agentic 的 retrieve 结果开头都是同样格式的 summary,
+        前 200 字可能撞车,把不同的结果当成重复丢掉。总量上限 30000 → 60000。
     """
+    from memory.context.config import tool_preview_chars
+
     seen: set[str] = set()
     parts: list[str] = []
     total = 0
@@ -52,12 +61,13 @@ def build_judge_facts(
         if not s.observation:
             continue
         obs = str(s.observation)
-        key = obs[:200]  # 用前 200 字做去重指纹,足够区分不同返回
-        if key in seen:
+        if obs in seen:  # 完全相同的返回只留一次(如反复搜同一关键词)
             continue
-        seen.add(key)
-        if len(obs) > max_per_obs:
-            obs = obs[:max_per_obs] + "…(截断)"
+        seen.add(obs)
+        name = s.tool_call.name if s.tool_call else None
+        limit = max(max_per_obs, tool_preview_chars(name, 0))
+        if len(obs) > limit:
+            obs = obs[:limit] + "…(截断)"
         if total + len(obs) > max_total:
             parts.append(obs[: max_total - total])
             break
