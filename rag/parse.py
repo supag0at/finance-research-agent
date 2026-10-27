@@ -1,6 +1,6 @@
 """文档解析:原始文件 → 有序的段落块列表(M9 Step 1)。
 
-切块之前必须先"读懂"文档结构,否则只能定长硬切(M3 的做法)。
+切块之前必须先"读懂"文档结构,否则只能定长切分(M3 的做法)。
 三种格式统一输出 list[Block],每块带:
   - text:      段落 / 表格的纯文本
   - page:      所在页(PDF 是真实页码;SEC HTML 是按分页符数出来的页序)
@@ -89,7 +89,7 @@ def _heading_level(div: Tag, body_size: float) -> int:
 
 
 def _table_text(table: Tag) -> str:
-    """表格逐行拍平成 "单元格 | 单元格"。财报的数字大多在表里,不能丢。"""
+    """表格逐行展平成 "单元格 | 单元格"。财报的数字大多在表里,不能丢。"""
     rows = []
     for tr in table.find_all("tr"):
         cells = [_norm(td.get_text(" ")) for td in tr.find_all(["td", "th"])]

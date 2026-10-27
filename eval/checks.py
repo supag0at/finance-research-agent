@@ -50,7 +50,7 @@ def build_judge_facts(
         被测 Agent 看到的一样多**——否则 retrieve 放宽到 12000 字后,裁判只看前 4000 字,
         回答里正确引用的数字会被判"依据中未出现"(实测裁判只看到 35~45% 的证据)。
       - 去重从"前 200 字"改成整段比较:agentic 的 retrieve 结果开头都是同样格式的 summary,
-        前 200 字可能撞车,把不同的结果当成重复丢掉。总量上限 30000 → 60000。
+        前 200 字可能相同,把不同的结果当成重复丢掉。总量上限 30000 → 60000。
     """
     from memory.context.config import tool_preview_chars
 

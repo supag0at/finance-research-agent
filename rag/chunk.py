@@ -89,7 +89,7 @@ def _split_long(text: str, limit: int) -> list[str]:
         p = p.strip()
         if not p:
             continue
-        while len(p) > limit:  # 连一句都超长(极少见):硬切
+        while len(p) > limit:  # 单句超长(极少见):按长度强制切分
             out.append(p[:limit])
             p = p[limit:]
         if buf and len(buf) + len(p) + 1 > limit:

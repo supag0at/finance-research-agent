@@ -3,7 +3,7 @@
 为什么要单独一层?因为日志是"一堆事件",没法直接回答"这次比上次贵了还是便宜了"。
 指标就是把事件压成几个能横向比较的数,这样才能盯趋势、做回归对比。
 
-成本这块有两个坑,都在 docs/design/M5.2-可观测性.md 的实测记录里:
+成本计算有两个注意点,都在 docs/design/M5.2-可观测性.md 的实测记录里:
   1. 我们请求的模型名是 deepseek-v4-flash,但响应里返回的是 deepseek-flash。
      所以"按模型名去查价格表"这条路不可靠 —— 单价我们自己配。
   2. prompt token 里有一大部分是**缓存命中**(实测 691 里有 512 命中),
@@ -72,11 +72,11 @@ class RunRecord:
     thread_id: str = ""
 
     total_ms: float = 0.0
-    hit_limit: bool = False  # 是否撞到 recursion_limit(不收敛)
+    hit_limit: bool = False  # 是否触达 recursion_limit(不收敛)
     # M6:预算快照与提前收尾的原因。
     # hit_limit 和 stop_reason 的区别值得记住:
     #   stop_reason 非空 = **我们自己的**边界生效了(走了 finalize,有答案);
-    #   hit_limit=True  = 连我们的边界都没拦住,被框架硬停(没有答案)。
+    #   hit_limit=True  = 预算边界未生效,被框架强制终止(没有答案)。
     # 改造后第二种应该几乎不再出现 —— 如果还出现,说明预算设得比 recursion_limit 还松。
     stop_reason: str = ""
     budget: dict = field(default_factory=dict)

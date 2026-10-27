@@ -244,7 +244,7 @@ def main() -> None:
             sweep.append(f"{thr}: 留相关 {keep_rel:.0%} / 去不相关 {cut_irr:.0%} / 无答案题仍过线 {na_pass}/{len(top_na)}")
         print("  阈值扫描 " + r["name"] + ":\n    " + "\n    ".join(sweep))
 
-    # 典型案例:rerank 救回来的 / 弄丢的
+    # 典型案例:rerank 修正的 / 丢失的
     print("\n## 名次变化最大的题(行 3 → 行 4b,fact)\n")
     deltas = []
     for it in facts:

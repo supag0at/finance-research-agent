@@ -6,7 +6,7 @@
     python -m eval.memory_runner --mode v2          # 第 2~4 步完成后才可用
     python -m eval.memory_runner --mode legacy --only L2_update
 
-为什么单独一个 runner,而不是塞进 eval/runner.py:
+为什么单独一个 runner,而不是并入 eval/runner.py:
   那套评测问的是"单次调研答得好不好",每题独立;记忆评测要**按顺序跑多轮对话**,
   最后一个问题只能靠记忆回答,而且需要控制 user_id。两者的用例结构和判分标准都不同。
 

@@ -70,7 +70,7 @@ def build_graph(
         tools = build_tools()
     if mode == "v2":
         # search_memory 不走 _reliable_tool:它需要 RunnableConfig(拿 user_id),
-        # 而可靠性包装会把调用丢进线程池,config 传不过去。本地向量检索也不需要重试/熔断。
+        # 而可靠性包装会把调用放进线程池,config 传不过去。本地向量检索也不需要重试/熔断。
         from memory.tools import search_memory
 
         tools = [*tools, search_memory]

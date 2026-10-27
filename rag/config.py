@@ -14,7 +14,7 @@ import os
 from dotenv import load_dotenv
 
 # 在读取任何环境变量之前先加载 .env。放在这里可保证:无论谁先 import 到本模块,
-# .env 都已就绪(避免"导入早于 load_dotenv 导致 key 读不到"的时序坑)。
+# .env 都已就绪(避免"导入早于 load_dotenv 导致 key 读不到"的时序问题)。
 load_dotenv()
 
 # ① Embedding(SiliconFlow bge-m3)

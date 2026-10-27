@@ -442,7 +442,7 @@ def scenario_readback() -> None:
     check("id 不存在返回友好提示", "没有找到 id=nope" in miss)
     check("发了 ctx_readback 事件", [e["found"] for e in ev.of("ctx_readback")] == [True, True, False])
 
-    # A/B 实测踩到的坑:回读那一圈被归档后,模型拿"回读结果"的 id 去回读,读到的不是原文。
+    # A/B 实测发现的问题:回读那一圈被归档后,模型拿"回读结果"的 id 去回读,读到的不是原文。
     rb_round = [
         AIMessage(content="", tool_calls=[{"name": "read_tool_result", "args": {"id": "call_1_0", "offset": 1500},
                                            "id": "call_rb"}]),

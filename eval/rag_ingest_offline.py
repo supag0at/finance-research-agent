@@ -57,7 +57,7 @@ class FakeStore:
 
 
 class FakeDB:
-    """模拟 rag/db.py 的语义:upsert_document 先清哈希,mark_ingested 最后盖章。"""
+    """模拟 rag/db.py 的语义:upsert_document 先清哈希,mark_ingested 最后写入完成标记。"""
 
     def __init__(self) -> None:
         self.docs: dict[str, dict] = {}

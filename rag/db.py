@@ -96,7 +96,7 @@ def upsert_document(source: str, title: str, content: str) -> tuple[int, bool]:
             return doc_id, False  # 内容没变且上次确实入库成功了,幂等跳过
 
         # 内容变了(或上次入库没跑完,old_hash 是空串):
-        # 更新正文、清空哈希、清掉旧 chunk,等调用方重建完再盖章。
+        # 更新正文、清空哈希、清掉旧 chunk,等调用方重建完再写入完成标记。
         cur.execute(
             "UPDATE fra_documents SET title=%s, content=%s, content_hash='' WHERE id=%s",
             (title, content, doc_id),
@@ -194,7 +194,7 @@ _V2_META = ("ticker", "company", "doc_type", "fiscal_year", "fiscal_period", "pe
 
 
 def upsert_document_v2(source: str, raw_hash: str, meta: dict) -> tuple[int, bool]:
-    """语义同 upsert_document(M6 ⑥):先清哈希、删旧父子块,成功后由 mark_ingested_v2 盖章。"""
+    """语义同 upsert_document(M6 ⑥):先清哈希、删旧父子块,成功后由 mark_ingested_v2 写入完成标记。"""
     vals = [meta.get(k) for k in _V2_META]
     with _connect() as conn, conn.cursor() as cur:
         cur.execute("SELECT id, content_hash FROM fra_v2_documents WHERE source = %s", (source,))

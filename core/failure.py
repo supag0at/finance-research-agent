@@ -29,7 +29,7 @@
 
 ## 三段式错误反馈
 
-失败时塞回给模型的不能是一个裸字符串。业界模式叫 Context-Injected Error Recovery,
+失败时回填给模型的不能是一个裸字符串。业界模式叫 Context-Injected Error Recovery,
 实测能把重试循环减少 25~40%,要素是三段:
 
     1. 错误原文      —— 逐字保留,不加工
@@ -266,7 +266,7 @@ def render(
     attempts: int,
     log: FailureLog | None = None,
 ) -> str:
-    """拼出三段式错误文本,这就是最终塞回 state 给模型看的内容。
+    """拼出三段式错误文本,这就是最终回填到 state 供模型读取的内容。
 
     格式刻意做成带小标题的分段:模型对结构化文本的遵循度明显好于一段流水话,
     而且**我们自己在 trace 里读也更快**。

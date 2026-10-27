@@ -11,7 +11,7 @@
   - 向量:named vector "dense"(embedding)+ "sparse"(BM25 的 tf 项,见 rag/sparse.py,Step 2 加);
   - 存储:Qdrant finance_corpus_v2 + Postgres fra_v2_*。v1 的集合和表都不动(消融对照)。
 
-幂等沿用 M6 ⑥ + M9 缺陷 10 的顺序:清哈希 → 解析/切块/向量化 → 删旧点 → 写新点 → 写 Postgres → 盖章。
+幂等沿用 M6 ⑥ + M9 缺陷 10 的顺序:清哈希 → 解析/切块/向量化 → 删旧点 → 写新点 → 写 Postgres → 写完成标记。
 
 contextual chunk header:子块拿去向量化时,前面拼一行"公司 文档类型 财年 | 小节"。
 原因:子块正文里通常没有公司名和年份(10-K 里只写 "we"、"fiscal year 2026"),

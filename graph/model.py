@@ -3,7 +3,7 @@
 区别:手写版直接用 openai 客户端;这里用 LangChain 的 ChatOpenAI,
 因为只有 LangChain 的消息/工具格式才能和 LangGraph 的 ToolNode 无缝配合。
 
-⚠️ 关键:必须继承手写版那个 trust_env=False 的坑。DeepSeek 是国内可直连服务,
+⚠️ 关键:必须继承手写版那个 trust_env=False 的设置。DeepSeek 是国内可直连服务,
 一旦走了 Clash 系统代理就会报 "Authentication Fails (governor)"。
 详见 docs/troubleshooting/01-环境与网络.md。
 """

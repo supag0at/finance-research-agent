@@ -112,7 +112,7 @@ class GraphAgent:
         handler = ObsHandler(question=question, impl="langgraph", thread_id=tid, budget=budget)
         config = {
             # budget 通过 configurable 传给节点 —— LangGraph 原生支持给节点传 config,
-            # 这样不用引入新的全局状态,也不用把它塞进 AgentState(它不是数据,是策略)。
+            # 这样不用引入新的全局状态,也不用把它放进 AgentState(它不是数据,是策略)。
             # user_id 是记忆隔离的依据(M7)。legacy 档不使用它 —— 这正是
             # 旧方案"所有人共用一个库"的缺陷,隔离类评测题在 legacy 下必然失败。
             "configurable": {
@@ -127,7 +127,7 @@ class GraphAgent:
         }
 
         handler.start()
-        # M7 程序记忆:在 finally 里归纳,而不是 remember 节点 —— 撞硬上限的运行走不到
+        # M7 程序记忆:在 finally 里归纳,而不是 remember 节点 —— 触达硬上限的运行走不到
         # remember,而它们恰恰是失败最多、最该学的;且程序记忆来自运行遥测,不是对话。
         collector = None
         if self.memory_mode == "v2" and procedural.enabled():
@@ -170,7 +170,7 @@ class GraphAgent:
         MCP_TOOLS 之后整条图必须走 ainvoke —— 跨进程通信的异步性质会沿着调用链
         一路传染到这里。详见 graph/mcp_tools.py 的文件头。
 
-        为什么不干脆统一走 ainvoke:默认路径(进程内工具)保持 M5.2 的同步执行,
+        为什么不统一走 ainvoke:默认路径(进程内工具)保持 M5.2 的同步执行,
         才能保证 M5.2.3 那份代价基线是可比的。否则一旦数字有变化,就分不清是
         MCP 的影响还是执行模型变了的影响。
         """

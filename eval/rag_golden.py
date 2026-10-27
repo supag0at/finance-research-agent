@@ -102,7 +102,7 @@ def _sample_chunks() -> list[dict]:
         # 现在 70% 从分析师真正看的小节抽(MD&A / 业务 / 主要财务指标),30% 全库随机保留长尾。
         core = [c for c in chunks if _CORE_SECTION.search(c["section"] or "")]
         n_core = round(n * 0.7) if core else 0
-        # 多抽一倍备用:LLM 判 usable=false 或校验失败的会被扔掉
+        # 多抽一倍备用:LLM 判 usable=false 或校验失败的会被丢弃
         sel = rng.sample(core, min(len(core), n_core * 2))
         rest = [c for c in chunks if c not in sel]
         sel += rng.sample(rest, min(len(rest), (n - n_core) * 2))

@@ -36,8 +36,8 @@ MIN_GROUNDED_RATIO = 0.6  # 回答里的数字至少 60% 能在工具返回里�
 MIN_ACCURACY = 3  # 准确性至少 3/5
 MIN_COMPLETENESS = 3  # 完整性至少 3/5
 # 为什么要卡 accuracy/completeness?
-# M5 对照实验时发现:Agent 撞到步数上限、交出一个近乎空的答案(acc=1 comp=1),
-# 竟然 PASS 了 —— 因为空答案什么都没编,faithfulness 反而满分 5。
+# M5 对照实验时发现:Agent 触达步数上限、交出一个近乎空的答案(acc=1 comp=1),
+# 仍然判定为 PASS —— 因为空答案什么都没编,faithfulness 反而满分 5。
 # 这和我们在 docs/notes/2026-09-09-评测方法论调研.md 里批评 τ-bench "空回复算成功"
 # 是同一个 bug,只不过出现在自己家里。教训:**只卡"不犯错"的维度,会奖励什么都不做。**
 # 必须同时卡"有没有把事办成"的维度。
@@ -146,7 +146,7 @@ def summarize_cost(results: list[dict]) -> dict | None:
     tool_calls = tool_fails = tool_retries = 0
     # M6 新增的两个计数:它们是"分类重试 + 熔断"真的在省钱的直接证据。
     # retry_skipped 高 = 很多确定性失败被挡在重试之前(每次省一个往返 + 一次退避);
-    # circuit_open 高 = 整条链路不通时没有排队去撞。
+    # circuit_open 高 = 整条链路不通时没有继续请求。
     retry_skipped = circuit_open = 0
     for o in obs_list:
         for st in (o.get("tools") or {}).values():
@@ -183,7 +183,7 @@ def summarize_cost(results: list[dict]) -> dict | None:
         "retry_skipped": retry_skipped,
         "circuit_open": circuit_open,
         # 两个"被拦下来"的计数要分开看,它们含义完全不同:
-        #   hit_limit  = 撞了框架的 recursion_limit,流程被硬切断,**没有答案**;
+        #   hit_limit  = 触达框架的 recursion_limit,流程被硬切断,**没有答案**;
         #   stop_early = 我们自己的预算边界先生效,走了 finalize,**有答案**。
         # M6 的目标就是把前者变成后者。
         "hit_limit": sum(1 for o in obs_list if o.get("hit_limit")),
@@ -273,7 +273,7 @@ def render_cost_section(cost: dict | None) -> list[str]:
         f"- 工具:共 {cost['tool_calls']} 次,失败 {cost['tool_fails']} 次"
         f"({cost['tool_fail_rate'] * 100:.1f}%),重试 {cost['tool_retries']} 次,"
         f"免重试 {cost.get('retry_skipped', 0)} 次,熔断拦截 {cost.get('circuit_open', 0)} 次",
-        f"- 撞框架硬上限(无答案):{cost['hit_limit']}/{cost['cases_with_obs']} 题;"
+        f"- 触达框架硬上限(无答案):{cost['hit_limit']}/{cost['cases_with_obs']} 题;"
         f"预算提前收尾(有答案):{cost.get('stop_early', 0)}/{cost['cases_with_obs']} 题"
         + (f" —— {'、'.join(cost['stop_reasons'])}" if cost.get("stop_reasons") else ""),
         f"- 耗时构成:{share or '-'}",
@@ -330,7 +330,7 @@ def render_markdown(summary: dict, results: list[dict], stamp: str) -> str:
             squeezes = cx.get("compactions", cx.get("summarizer_calls", 0))
             peak = cx.get("max_est_tokens") or "-"
             m = o["llm"]
-            # 最后一列换成"怎么结束的":正常 / 预算提前收尾(有答案)/ 撞框架硬上限(无答案)。
+            # 最后一列换成"怎么结束的":正常 / 预算提前收尾(有答案)/ 触达框架硬上限(无答案)。
             if o.get("hit_limit"):
                 ending = "⛔撞框架硬上限"
             elif o.get("stop_reason"):

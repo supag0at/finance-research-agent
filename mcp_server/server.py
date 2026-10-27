@@ -29,7 +29,7 @@ FastMCP 把这件事收敛成一份:**函数签名自动变成参数 schema,docs
 
 本 server 默认走 stdio:客户端把它当子进程拉起,用**标准输入输出**收发
 JSON-RPC。因此 —— **绝对不能往 stdout 打印任何东西**。一句 print() 就会
-插进协议流里,把 JSON 解析搞坏,而且报错信息通常完全看不出是这个原因。
+插进协议流里,破坏 JSON 解析,而且报错信息通常完全看不出是这个原因。
 所有日志必须走 stderr(下面统一用 _log)。
 
 ## ⚠️ 已知未解决:retrieve 在 MCP 子进程里极慢
@@ -93,7 +93,7 @@ def _log_reliability(event: dict) -> None:
     形式不同,道理一样。
 
     这里先用 stderr 打出来保底(手工跑 server 时看得见)。要真正补上,得让本
-    进程也接 OTel 上报到同一个 Phoenix,或者把计数塞进 MCP 响应的 _meta 带回去。
+    进程也接 OTel 上报到同一个 Phoenix,或者把计数放进 MCP 响应的 _meta 带回去。
     """
     kind = event.get("kind", "?")
     tool = event.get("tool", "?")

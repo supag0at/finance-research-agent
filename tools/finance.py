@@ -135,5 +135,5 @@ def fetch_page(url: str) -> str:
         tag.decompose()
     text = soup.get_text(separator=" ", strip=True)
 
-    # (5) 文本上限:避免把太长的内容塞进上下文。
+    # (5) 文本上限:避免把过长的内容放进上下文。
     return text[:MAX_TEXT_CHARS]

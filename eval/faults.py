@@ -203,7 +203,7 @@ def scenario_budget_bounds() -> None:
         b.note_tool_calls([("fetch_page", "http://same")])
     check("循环检测", "重复调用" in b.exceeded(), b.exceeded())
 
-    # 全部填 0 必须等于"全关",而不是"立刻触发"。这是实测踩过的坑。
+    # 全部填 0 必须等于"全关",而不是"立刻触发"。这是实测发现的问题。
     b = RunBudget(max_cost_cny=0, max_wall_s=0, max_llm_calls=0, repeat_limit=0)
     b.update(999, 999)
     b.note_tool_calls([("a", "b")] * 99)
@@ -217,7 +217,7 @@ def scenario_budget_bounds() -> None:
 
 
 # --------------------------------------------------------------------------
-# 场景 6:路由 —— 超预算时走 finalize(有答案),而不是硬切断(白卷)
+# 场景 6:路由 —— 超预算时走 finalize(有答案),而不是硬切断(无答案)
 # --------------------------------------------------------------------------
 def scenario_routing() -> None:
     print("\n场景6 · 超预算时路由到 finalize,保证有答案")

@@ -47,7 +47,7 @@ _MAX_FACTS_CHARS = 30000
 
 
 def _parse_json(text: str) -> dict:
-    """从模型输出里稳健地抠出 JSON(容忍 ```json 代码块包裹或前后废话)。"""
+    """从模型输出里稳健地提取 JSON(容忍 ```json 代码块包裹或前后多余文本)。"""
     text = text.strip()
     if text.startswith("```"):
         # 去掉 ```json ... ``` 包裹

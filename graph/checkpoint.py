@@ -12,7 +12,7 @@ Temporal 在讲 Agent 可靠性时直接点了这个:
     in-memory checkpointer, so the suspended graph lives in process memory and
     wouldn't survive a crash.
 
-而面试里被看重的那个认知是:
+这里要建立的认知是:
 
     an agent run is a stateful long-lived process that needs
     **the same durability guarantees as a payment workflow**.
@@ -75,11 +75,11 @@ def default_checkpointer() -> object:
         # 连接就关了。进程退出时由 OS 回收;这不优雅,但比把连接池的生命周期
         # 搅进建图逻辑要简单,而且我们是单进程 CLI/评测场景。
         #
-        # ⚠️ 实测踩坑:**必须同时把 cm 也挂到模块全局上**。
+        # ⚠️ 注意(实测):**必须同时把 cm 也挂到模块全局上**。
         # 第一版只存了 saver,`cm` 是个局部变量,函数一返回就被 GC;
         # 而 from_conn_string 是 @contextmanager 生成器,GC 时会执行 __exit__,
         # 于是连接被关掉。表能建成功(setup() 在连接还活着时跑完了),
-        # 之后第一次真正读检查点就炸 `OperationalError: the connection is closed`。
+        # 之后第一次真正读检查点就报 `OperationalError: the connection is closed`。
         # 教训:手动 __enter__ 时,"谁持有 cm"就是"连接活多久"。
         cm = PostgresSaver.from_conn_string(PG_DSN)
         saver = cm.__enter__()

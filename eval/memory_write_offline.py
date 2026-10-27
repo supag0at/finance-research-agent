@@ -2,7 +2,7 @@
 
     python -m eval.memory_write_offline
 
-LLM 用脚本化的假实现(按调用顺序吐预设的 JSON),embedding 用假哈希向量。
+LLM 用脚本化的假实现(按调用顺序返回预设的 JSON),embedding 用假哈希向量。
 所以这里测的是**编排逻辑**:筛选、校验、精确/模糊冲突、取代与撤销、写入顺序、
 失败不抛异常 —— 而不是"抽取器 prompt 写得好不好"(那要用真模型,见 docs/design/M7 §5.3 的抽取探针)。
 """

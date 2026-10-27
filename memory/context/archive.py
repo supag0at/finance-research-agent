@@ -65,7 +65,7 @@ def render_rounds(rounds: list[Round], max_tool_chars: int) -> str:
 
 def _entry(r: Round, gist: str) -> ArchiveEntry:
     # 回读结果自己的 id 不列出来:它只是原文的一个窗口,标签里已经带着原始 id。
-    # A/B 实测踩过:列出来之后模型拿它去回读,读到的是一份 1678 字的"回读结果",以为原文到头了。
+    # A/B 实测发现:列出来之后模型拿它去回读,读到的是一份 1678 字的"回读结果",以为原文到头了。
     ids = [t.tool_call_id for t in r.tools if t.name != READBACK_TOOL]
     return {"round": r.no, "ids": ids, "calls": _calls(r), "gist": gist}
 

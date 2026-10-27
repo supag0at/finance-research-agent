@@ -87,7 +87,7 @@ def setup_tracing(project_name: str = "finance-research-agent") -> bool:
 
     endpoint = os.getenv("OBS_TRACING_ENDPOINT", DEFAULT_ENDPOINT)
 
-    # ⚠️ 代理坑:OTLP 的 http exporter 内部用 requests,而 requests 默认读环境变量里的
+    # ⚠️ 代理问题:OTLP 的 http exporter 内部用 requests,而 requests 默认读环境变量里的
     # 代理设置 —— Clash 开着全局代理时,连 127.0.0.1 都会被它劫走,span 发不出去。
     # 这和项目里 Qdrant/DeepSeek 用 trust_env=False 是同一个问题的第三次出现。
     session = requests.Session()
@@ -132,7 +132,7 @@ def setup_tracing(project_name: str = "finance-research-agent") -> bool:
 
 
 def shutdown_tracing() -> None:
-    """强制把攒着的 span 发出去。进程退出前必须调用,否则末尾的 span 会丢。"""
+    """强制发送缓冲中的 span。进程退出前必须调用,否则末尾的 span 会丢。"""
     global _provider
     if _provider is not None:
         try:

@@ -3,7 +3,7 @@
 这就是我们反复讲的那个"带工具的循环":
   1. 把对话历史 + 工具清单发给 LLM。
   2. LLM 要么"要调工具"(Function Calling),要么"给最终答案"。
-  3. 若要调工具:执行它 -> 拿到结果(observation)-> 塞回对话 -> 继续循环。
+  3. 若要调工具:执行它 -> 拿到结果(observation)-> 回填对话 -> 继续循环。
   4. 若给答案:结束,返回答案 + 整条轨迹(Trajectory)。
 
 M1 不用任何 Agent 框架,全部手写。等你把这个循环看懂了,M5 再用 LangGraph
@@ -118,7 +118,7 @@ class Agent:
                     for tc in message.tool_calls
                 ],
             }
-            # 关键坑:DeepSeek 思考模式下,只要请求带了 tools,就必须把这一轮的
+            # 注意:DeepSeek 思考模式下,只要请求带了 tools,就必须把这一轮的
             # reasoning_content 原样回传,否则下一次请求会报 HTTP 400。所以这里
             # 有思考内容时一定要带上。
             if reasoning:
@@ -147,7 +147,7 @@ class Agent:
                     )
                 )
 
-                # (4) 把工具结果塞回对话,供下一圈使用。
+                # (4) 把工具结果回填到对话,供下一圈使用。
                 #     role="tool" + tool_call_id 是在告诉模型:这是你刚才那次调用的结果。
                 messages.append(
                     {

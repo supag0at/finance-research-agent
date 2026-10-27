@@ -3,7 +3,7 @@
 为什么用回调而不是自己去包装节点?
   1. **不用改 nodes.py 一行代码** —— 观测和业务彻底解耦;
   2. 回调的父子关系由框架维护,天然正确。如果自己手写 OTel span 去包节点,
-     会踩"span 孤儿":OTel 把当前 span 存在 contextvars 里,而图里有环,
+     会产生"span 孤儿":OTel 把当前 span 存在 contextvars 里,而图里有环,
      调度器第二圈回到同一节点时是新的调用栈,上下文不会自动带过去,
      那一圈的 span 就脱离父节点变成一棵新树。
 
@@ -88,7 +88,7 @@ class ObsHandler(BaseCallbackHandler):
         return self.start()
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        # 注意:撞上限属于异常路径,由调用方通过 finish(hit_limit=True) 显式告知,
+        # 注意:触达上限属于异常路径,由调用方通过 finish(hit_limit=True) 显式告知,
         # 这里只兜住"忘了 finish"的情况。
         if self._t0 and not self.record.total_ms:
             self.finish()
