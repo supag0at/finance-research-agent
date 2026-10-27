@@ -6,7 +6,7 @@
 ## 工程复盘 & 高级特性手册
 
 见 [`docs/`](docs/README.md):
-- `docs/troubleshooting/` —— 真实踩过的坑的复盘(现象→排查→根因→解决→面试话术)。
+- `docs/troubleshooting/` —— 真实踩过的坑的复盘(现象→排查→根因→解决→要点总结)。
 - `docs/playbook/` —— "问题→高级特性"对照手册(RAG/记忆/评估的进阶方向)。
 
 ## 里程碑规划
