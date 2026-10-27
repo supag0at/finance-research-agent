@@ -45,7 +45,7 @@ def build_judge_facts(
       2. 单条限长:一篇超长网页正文截断到 max_per_obs,避免一条挤占全部预算;
       3. 总量限长:所有证据合计不超过 max_total。
 
-    M9 修过两处(docs/design/M9-AgenticRAG.md §6.7):
+    M9 修过两处:
       - 单条上限按工具取 max(max_per_obs, 主 Agent 能看到的预览长度)。原则:**裁判看到的证据至少要和
         被测 Agent 看到的一样多**——否则 retrieve 放宽到 12000 字后,裁判只看前 4000 字,
         回答里正确引用的数字会被判"依据中未出现"(实测裁判只看到 35~45% 的证据)。

@@ -7,7 +7,7 @@
      调度器第二圈回到同一节点时是新的调用栈,上下文不会自动带过去,
      那一圈的 span 就脱离父节点变成一棵新树。
 
-两个实测出来的陷阱(见 docs/design/M5.2-可观测性.md):
+两个实测出来的陷阱:
 
   陷阱1  条件边函数 should_continue 也会触发 on_chain_start,而且 metadata 里的
          langgraph_node 同样标着 'plan'。只按 langgraph_node 计数会让 plan 翻倍。

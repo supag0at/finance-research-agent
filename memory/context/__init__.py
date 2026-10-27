@@ -1,4 +1,4 @@
-"""上下文压缩 v2(M8):增量归档 + 钉住区 + 可回读。设计见 docs/design/M8-上下文压缩.md。
+"""上下文压缩 v2(M8):增量归档 + 钉住区 + 可回读。
 
 和 legacy(memory/short_term.py)的根本区别:
 

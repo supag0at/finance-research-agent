@@ -24,7 +24,7 @@
 
 但要记住一个优先级:**重试和熔断都只是配角**。它们修的是基础设施抖动;
 Agent 最贵的故障是"模型判断错误导致的绕圈子",那个只有硬边界能止损
-(见 core/budget.py)。详见 docs/design/M6-可靠性强化.md。
+(见 core/budget.py)。
 """
 
 import concurrent.futures
@@ -91,7 +91,6 @@ def run_reliably(
         idempotent: 这个工具重复执行是否安全。我们现有四个工具都是只读的,
               所以默认 True。**保留这个参数是为后续扩展预留**:一旦加入写操作
               工具(下单、发邮件),传 False 就会禁止自动重试,而不是默默重复执行。
-              见 docs/design/M6-可靠性强化.md §3.1。
 
     返回:
         成功时返回工具结果;

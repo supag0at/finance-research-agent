@@ -8,7 +8,7 @@
   - kind:      "para" | "table"
 后续 chunk.build_parents() 只按 title_path 和长度分组,不再关心原始格式。
 
-各格式的结构线索(都是看真实文件定下来的,见 docs/design/M9 §6.2):
+各格式的结构线索(都是看真实文件定下来的):
   SEC HTML(iXBRL):段落是叶子 <div>;标题 = 全部 span 都是 font-weight:700 的短段落;
     分页 = <hr style="page-break-after:always">;页脚(纯页码、"Table of Contents")丢弃。
   A 股 PDF:PyMuPDF 的 text block ≈ 段落;每页前两块是页眉(公司名+报告名)和页脚("11 / 219");

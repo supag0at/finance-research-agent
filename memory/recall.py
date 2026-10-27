@@ -40,7 +40,7 @@ from typing import Optional
 from memory import events
 from memory.schema import MemoryRecord
 
-# ⚠️ 阈值初值,标定依据见 docs/design/M7-记忆强化.md §5.4 与 eval/memory_calibrate.py。
+# ⚠️ 阈值初值,标定脚本见 eval/memory_calibrate.py。
 RECALL_THRESHOLD = float(os.getenv("MEMORY_RECALL_THRESHOLD") or 0.5)
 RECALL_TOP_K = int(os.getenv("MEMORY_RECALL_TOP_K") or 5)
 CANDIDATE_POOL = 10  # 先取 10 条再重排,重排才有意义

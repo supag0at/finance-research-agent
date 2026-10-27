@@ -1,7 +1,7 @@
 """上下文压缩 v2 的离线回归(M8)—— 写法照 eval/faults.py。
 
 不联网、不调模型、不花钱。归档器用脚本化的 FakeLLM 代替,水位直接通过 cfg 传低值。
-场景编号与 docs/design/M8-上下文压缩.md §4.1 一致。
+场景编号 S1~S10 与 M8 设计记录一致。
 
     python -m eval.compress_offline
 

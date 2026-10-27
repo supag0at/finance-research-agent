@@ -5,7 +5,6 @@
 
 ⚠️ 关键:必须继承手写版那个 trust_env=False 的设置。DeepSeek 是国内可直连服务,
 一旦走了 Clash 系统代理就会报 "Authentication Fails (governor)"。
-详见 docs/troubleshooting/01-环境与网络.md。
 """
 
 import os

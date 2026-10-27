@@ -2,7 +2,7 @@
 
 一个 `MemoryRecord` 覆盖情景和语义两种记忆,用 `type` 区分;程序记忆另放 Postgres(见 procedural.py)。
 
-关于几个关键字段(设计依据见 docs/design/M7-记忆强化.md §3.4):
+关于几个关键字段:
 
 - `user_id`    用户隔离靠它,与"Advanced JSON"无关。
 - `subject`    这条信息是关于谁的("self" 或 "父亲" 等),只为区分"我的茅台/我爸的茅台"。

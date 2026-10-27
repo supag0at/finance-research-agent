@@ -1,6 +1,6 @@
 # RAG 增强路线图
 
-> M9 已做完大部分(见 docs/design/M9-AgenticRAG.md);下表状态已更新。未做:语义切块、MMR、上下文压缩。
+> M9 已做完大部分(结果见 [`results/retrieval/`](../results/retrieval/));下表状态已更新。未做:语义切块、MMR、上下文压缩。
 
 当前 M3 实现的是"能跑通的最小 RAG":定长切块 + bge-m3 向量 + Qdrant 余弦相似度检索。
 本文记录后续可以加的增强技术,统一用 **名词 → 含义 → 解决什么问题** 三元组说明,

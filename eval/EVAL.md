@@ -2,9 +2,7 @@
 
 > 这份文档讲**实现与用法**:数据怎么流、每个文件干什么、怎么加题、怎么读报告、怎么扩展。
 >
-> 想看**为什么这么设计**、以及**首次评测发现了什么问题**,见
-> [`docs/playbook/eval.md`](../docs/playbook/eval.md);
-> 评测过程中踩的坑的复盘,见 [`docs/troubleshooting/02-评测校准.md`](../docs/troubleshooting/02-评测校准.md)。
+> 评测体系的设计取舍与主要结果见仓库根目录的 [README](../README.zh-CN.md#4-实验);原始报告在 [`results/`](../results/)。
 
 ---
 

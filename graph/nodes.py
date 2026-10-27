@@ -157,7 +157,7 @@ def make_compress_node(mode="v2"):
     mode(兼容旧调用:True → legacy,False → off):
       off     不压缩;
       legacy  M5 以来的 memory/short_term.py(按条数触发、每圈重算摘要)。保留用于消融对照;
-      v2      M8 的 memory/context/(增量归档 + 钉住区 + 可回读),见 docs/design/M8-上下文压缩.md。
+      v2      M8 的 memory/context/(增量归档 + 钉住区 + 可回读)。
     """
     if isinstance(mode, bool):
         mode = "legacy" if mode else "off"

@@ -38,8 +38,7 @@ MIN_COMPLETENESS = 3  # 完整性至少 3/5
 # 为什么要卡 accuracy/completeness?
 # M5 对照实验时发现:Agent 触达步数上限、交出一个近乎空的答案(acc=1 comp=1),
 # 仍然判定为 PASS —— 因为空答案什么都没编,faithfulness 反而满分 5。
-# 这和我们在 docs/notes/2026-09-09-评测方法论调研.md 里批评 τ-bench "空回复算成功"
-# 是同一个 bug,只不过出现在自己家里。教训:**只卡"不犯错"的维度,会奖励什么都不做。**
+# 这和 τ-bench 被指出的"空回复算成功"是同一类问题。教训:**只卡"不犯错"的维度,会奖励什么都不做。**
 # 必须同时卡"有没有把事办成"的维度。
 
 _CASES_PATH = Path(__file__).parent / "cases.jsonl"

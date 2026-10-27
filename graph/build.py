@@ -56,7 +56,7 @@ def build_graph(
         raise ValueError(f"未知 memory_mode: {mode!r}(可选 off / legacy / v2)")
 
     # M8 压缩档位。use_short_term=False 仍表示"不压缩",兼容旧调用方。
-    # 默认 v2(M8 验收后设定,见 docs/design/M8-上下文压缩.md §六);legacy 留作消融对照。
+    # 默认 v2(M8 验收后设定);legacy 留作消融对照。
     cmode = "off" if not use_short_term else (compress_mode or os.getenv("COMPRESS_MODE", "").strip() or "v2")
     if cmode not in COMPRESS_MODES:
         raise ValueError(f"未知 compress_mode: {cmode!r}(可选 {' / '.join(COMPRESS_MODES)})")
@@ -100,7 +100,7 @@ def build_graph(
     builder.add_edge("compress", "plan")
     # 条件边:plan 之后有三条路 —— 调工具 / 预算超限去强制收尾 / 直接写记忆结束。
     # M6 新增 finalize 这条:它必须在 recursion_limit 之前触发,否则 LangGraph
-    # 直接抛 GraphRecursionError,我们来不及产出答案(见 docs/design/M6-可靠性强化.md §3.2)。
+    # 直接抛 GraphRecursionError,我们来不及产出答案。
     builder.add_conditional_edges(
         "plan",
         should_continue,
