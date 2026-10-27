@@ -2,9 +2,10 @@
 
     python results/make_figures.py
 
-Writes light and dark PNGs to assets/figures/. Retrieval numbers are recomputed
-from results/retrieval/rag_offline_20261022.json; the other figures use the
-aggregates printed in the cited report files (noted next to each constant).
+Writes light and dark PNGs to assets/figures/ (backgrounds match GitHub's themes).
+Retrieval numbers are recomputed from results/retrieval/rag_offline_20261022.json;
+the other figures use the aggregates in the cited report files (noted next to
+each constant). Figures carry no titles: captions live in the README.
 """
 
 import json
@@ -14,17 +15,19 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.patches import Rectangle  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "figures"
 
 THEMES = {
-    "light": {"surface": "#fcfcfb", "ink": "#0b0b0b", "ink2": "#52514e", "muted": "#898781",
-              "grid": "#e1e0d9", "axis": "#c3c2b7", "s1": "#2a78d6", "s2": "#eb6834", "dim": "#c3c2b7"},
-    "dark": {"surface": "#1a1a19", "ink": "#f0efec", "ink2": "#c3c2b7", "muted": "#898781",
-             "grid": "#2c2c2a", "axis": "#383835", "s1": "#3987e5", "s2": "#d95926", "dim": "#4a4a46"},
+    "light": {"bg": "#ffffff", "ink": "#1f2328", "ink2": "#59636e", "muted": "#818b98",
+              "grid": "#eaecef", "s1": "#2e6bb8", "s2": "#d9713c", "dim": "#c8ccd1", "empty": "#eff1f3"},
+    "dark": {"bg": "#0d1117", "ink": "#e6edf3", "ink2": "#9198a1", "muted": "#7d8590",
+             "grid": "#21262d", "s1": "#5689cf", "s2": "#cc7843", "dim": "#3d444d", "empty": "#21262d"},
 }
-FONT = ["Segoe UI", "Helvetica Neue", "Arial", "DejaVu Sans"]
+FONT = ["Segoe UI", "Arial", "DejaVu Sans"]
+W = 7.2  # inches; ~1440 px at 200 dpi, shown at GitHub's ~880 px column
 
 
 def retrieval_rows():
@@ -39,109 +42,119 @@ def retrieval_rows():
     return rows
 
 
-def _axes(t, figsize=(8, 4.2)):
-    fig, ax = plt.subplots(figsize=figsize, dpi=200)
-    fig.patch.set_facecolor(t["surface"])
-    ax.set_facecolor(t["surface"])
-    for side in ("top", "right", "left"):
-        ax.spines[side].set_visible(False)
-    ax.spines["bottom"].set_color(t["axis"])
-    ax.tick_params(colors=t["muted"], length=0, labelsize=9)
-    ax.yaxis.grid(True, color=t["grid"], linewidth=0.6)
+def _fig(t, h):
+    fig, ax = plt.subplots(figsize=(W, h), dpi=200)
+    fig.patch.set_facecolor(t["bg"])
+    ax.set_facecolor(t["bg"])
+    for side in ax.spines.values():
+        side.set_visible(False)
+    ax.tick_params(colors=t["muted"], length=0, labelsize=8.5)
     ax.set_axisbelow(True)
     return fig, ax
 
 
-def _title(fig, t, title, subtitle):
-    fig.text(0.02, 0.965, title, color=t["ink"], fontsize=12.5, fontweight="bold", ha="left", va="top")
-    fig.text(0.02, 0.905, subtitle, color=t["ink2"], fontsize=9, ha="left", va="top")
+def _ylabels(ax, t, labels, bold_last=False):
+    ax.set_yticks(range(len(labels)), labels)
+    for i, lab in enumerate(ax.get_yticklabels()):
+        lab.set_color(t["ink"] if (bold_last and i == len(labels) - 1) else t["ink2"])
+        lab.set_fontsize(9)
+        if bold_last and i == len(labels) - 1:
+            lab.set_fontweight("bold")
+    ax.invert_yaxis()
 
 
-def _legend(ax, t):
-    leg = ax.legend(loc="upper left", frameon=False, fontsize=9, ncol=2, bbox_to_anchor=(0, 1.02))
+def _legend(ax, t, handles, loc="lower left", anchor=(0, 1.0)):
+    leg = ax.legend(handles=handles, loc=loc, bbox_to_anchor=anchor, frameon=False, fontsize=8.5,
+                    handletextpad=0.4, borderaxespad=0.1, ncol=len(handles))
     for txt in leg.get_texts():
         txt.set_color(t["ink2"])
 
 
-def _label(ax, t, x, y, text, bold=False):
-    ax.text(x, y, text, ha="center", va="bottom", fontsize=8.5, color=t["ink"] if bold else t["ink2"],
-            fontweight="bold" if bold else "normal")
-
-
 def fig_retrieval(t):
     rows = retrieval_rows()
-    names = ["Fixed chunks\n+ dense (v1)", "Parent-child\n+ dense", "Parent-child\n+ BM25",
-             "Hybrid\n(RRF)", "+ rerank\n0.6B", "+ rerank\n8B"]
-    fig, ax = _axes(t)
-    w = 0.36
-    xs = range(len(names))
-    ax.bar([x - w / 2 - 0.01 for x in xs], [r[0] for r in rows], w, color=t["s1"], label="Hit@5")
-    ax.bar([x + w / 2 + 0.01 for x in xs], [r[1] for r in rows], w, color=t["s2"], label="MRR")
-    for x, (hit, _) in zip(xs, rows):
-        _label(ax, t, x - w / 2 - 0.01, hit + 0.015, f"{hit:.2f}", bold=True)
-    ax.set_xticks(list(xs), names, color=t["ink2"], fontsize=8.5)
-    ax.set_ylim(0, 1.08)
-    _legend(ax, t)
-    _title(fig, t, "Retrieval ablation: each layer's contribution",
-           "Same 24 filings, same 72 fact questions. Hit@5 0.31 → 0.93; rerank cannot exceed the Hit@30 ceiling of 0.93.")
-    fig.subplots_adjust(top=0.78, bottom=0.17, left=0.06, right=0.98)
+    names = ["Fixed chunks + dense (v1)", "Parent-child + dense", "Parent-child + BM25",
+             "Hybrid (RRF)", "Hybrid + rerank 0.6B", "Hybrid + rerank 8B"]
+    fig, ax = _fig(t, 3.0)
+    ax.xaxis.grid(True, color=t["grid"], linewidth=0.8)
+    for y, (hit, mrr) in enumerate(rows):
+        ax.plot([mrr, hit], [y, y], color=t["dim"], linewidth=2, solid_capstyle="round", zorder=1)
+        ax.scatter([mrr], [y], s=34, color=t["s2"], zorder=3, linewidths=1.5, edgecolors=t["bg"])
+        ax.scatter([hit], [y], s=46, color=t["s1"], zorder=3, linewidths=1.5, edgecolors=t["bg"])
+        ax.text(hit + 0.025, y, f"{hit:.2f}", va="center", fontsize=8.5, color=t["ink"],
+                fontweight="bold" if y == len(rows) - 1 else "normal")
+    _ylabels(ax, t, names, bold_last=True)
+    ax.set_xlim(0, 1.04)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    h1 = ax.scatter([], [], s=46, color=t["s1"], label="Hit@5")
+    h2 = ax.scatter([], [], s=34, color=t["s2"], label="MRR")
+    _legend(ax, t, [h1, h2])
+    fig.subplots_adjust(left=0.27, right=0.98, top=0.9, bottom=0.1)
     return fig
 
 
 def fig_refusal(t):
     # results/retrieval/rag_agentic_20261022.json, rows 4b* / 5 / 6 / 7
-    names = ["Hybrid + rerank\n(no agent)", "+ query analysis", "+ HyDE", "Full agentic\n(+ evidence grading)"]
+    names = ["Hybrid + rerank (no agent)", "+ query analysis", "+ query analysis + HyDE", "Full agentic (+ grading)"]
     refused = [6, 3, 5, 10]
-    fig, ax = _axes(t, figsize=(8, 3.8))
-    colors = [t["dim"]] * 3 + [t["s1"]]
-    ax.bar(range(4), refused, 0.5, color=colors)
-    for x, v in enumerate(refused):
-        _label(ax, t, x, v + 0.15, f"{v}/10", bold=(x == 3))
-    ax.set_xticks(range(4), names, color=t["ink2"], fontsize=8.5)
-    ax.set_ylim(0, 11.5)
-    ax.set_yticks([0, 5, 10])
-    _title(fig, t, "Correct refusals on 10 unanswerable questions",
-           "Multi-query recall alone makes refusal worse (6 → 3); evidence grading restores it (10/10) with 0/75 false refusals.")
-    fig.subplots_adjust(top=0.76, bottom=0.18, left=0.06, right=0.98)
+    fig, ax = _fig(t, 2.1)
+    size, gap = 0.62, 0.38
+    for y, n in enumerate(refused):
+        color = t["s1"] if y == len(refused) - 1 else t["ink2"]
+        for k in range(10):
+            ax.add_patch(Rectangle((k * (size + gap) * 0.1, y - size / 2), size * 0.1, size,
+                                   color=color if k < n else t["empty"], linewidth=0))
+        ax.text(1.03, y, f"{n} / 10", va="center", fontsize=9, color=t["ink"],
+                fontweight="bold" if y == len(refused) - 1 else "normal")
+    _ylabels(ax, t, names, bold_last=True)
+    ax.set_xlim(-0.01, 1.14)
+    ax.set_ylim(len(names) - 0.4, -0.6)
+    ax.set_xticks([])
+    fig.subplots_adjust(left=0.27, right=0.98, top=0.97, bottom=0.04)
     return fig
 
 
 def fig_e2e(t):
-    # results/e2e/: v1 = 2026-10-22_084500, hybrid = 2026-10-24_082937, agentic = 2026-10-24_082818 (14 cases each)
-    names = ["v1 (dense, toy corpus)", "Hybrid", "Agentic"]
-    tools = [9.2, 4.2, 2.4]
-    web = [6.1, 1.6, 0.8]
-    fig, ax = _axes(t, figsize=(8, 3.8))
-    w = 0.32
-    xs = range(3)
-    ax.bar([x - w / 2 - 0.01 for x in xs], tools, w, color=t["s1"], label="Tool calls / question")
-    ax.bar([x + w / 2 + 0.01 for x in xs], web, w, color=t["s2"], label="Web calls / question")
-    for x, a, b in zip(xs, tools, web):
-        _label(ax, t, x - w / 2 - 0.01, a + 0.15, f"{a:.1f}", bold=True)
-        _label(ax, t, x + w / 2 + 0.01, b + 0.15, f"{b:.1f}")
-    ax.set_xticks(list(xs), names, color=t["ink2"], fontsize=9)
-    ax.set_ylim(0, 11)
-    _legend(ax, t)
-    _title(fig, t, "End-to-end: how hard the agent works to answer",
-           "14 end-to-end questions. Pass rates are within run-to-run noise; process metrics are stable across runs.")
-    fig.subplots_adjust(top=0.76, bottom=0.12, left=0.06, right=0.98)
+    # results/e2e/: v1 = 2026-10-22_084500, hybrid = 2026-10-24_082937, agentic = 2026-10-24_082818
+    modes = ["v1 (toy corpus)", "Hybrid", "Agentic"]
+    series = [("Tool calls / question", [9.2, 4.2, 2.4], "s1"), ("Web calls / question", [6.1, 1.6, 0.8], "s2")]
+    fig, ax = _fig(t, 2.9)
+    ax.yaxis.grid(True, color=t["grid"], linewidth=0.8)
+    handles = []
+    for label, vals, key in series:
+        (h,) = ax.plot(range(3), vals, color=t[key], linewidth=2, marker="o", markersize=6.5,
+                       markeredgecolor=t["bg"], markeredgewidth=1.5, label=label, zorder=3)
+        handles.append(h)
+        for x, v in enumerate(vals):
+            ax.text(x, v + 0.45, f"{v:.1f}", ha="center", fontsize=8.5, color=t["ink"],
+                    fontweight="bold" if x == 2 else "normal")
+    ax.set_xticks(range(3), modes)
+    for lab in ax.get_xticklabels():
+        lab.set_color(t["ink2"])
+        lab.set_fontsize(9)
+    ax.set_xlim(-0.35, 2.35)
+    ax.set_ylim(0, 10.5)
+    ax.set_yticks([0, 2, 4, 6, 8, 10])
+    _legend(ax, t, handles)
+    fig.subplots_adjust(left=0.06, right=0.98, top=0.9, bottom=0.12)
     return fig
 
 
 def fig_budget(t):
-    # M6 calibration runs on the 5-case regression set (total cost of one run)
-    names = ["No run budget\n(baseline)", "Budget set below\nhealthy runs", "Budget calibrated\n(≈2× worst healthy run)"]
+    # M6 calibration runs on the 5-case regression set (total cost of one run; pass 5/5 in all three)
+    names = ["No run budget (baseline)", "Budget below healthy runs", "Budget calibrated (≈2× worst healthy)"]
     cost = [0.0990, 0.1389, 0.1179]
-    fig, ax = _axes(t, figsize=(8, 3.6))
     colors = [t["dim"], t["s2"], t["s1"]]
-    ax.bar(range(3), cost, 0.5, color=colors)
-    for x, v in enumerate(cost):
-        _label(ax, t, x, v + 0.002, f"¥{v:.4f}", bold=(x == 1))
-    ax.set_xticks(range(3), names, color=t["ink2"], fontsize=8.5)
-    ax.set_ylim(0, 0.16)
-    _title(fig, t, "A guardrail set inside the normal range costs more, not less",
-           "Total cost of the 5-case regression run; pass rate 5/5 in all three. The too-tight budget cut healthy runs mid-way (+40%).")
-    fig.subplots_adjust(top=0.76, bottom=0.2, left=0.08, right=0.98)
+    fig, ax = _fig(t, 1.9)
+    ax.xaxis.grid(True, color=t["grid"], linewidth=0.8)
+    ax.barh(range(3), cost, height=0.42, color=colors, zorder=2)
+    for y, v in enumerate(cost):
+        delta = "" if y == 0 else f"  (+{(v / cost[0] - 1) * 100:.0f}%)"
+        ax.text(v + 0.002, y, f"¥{v:.4f}{delta}", va="center", fontsize=8.5, color=t["ink"],
+                fontweight="bold" if y == 1 else "normal")
+    _ylabels(ax, t, names)
+    ax.set_xlim(0, 0.175)
+    ax.set_xticks([0, 0.05, 0.10, 0.15], ["¥0", "¥0.05", "¥0.10", "¥0.15"])
+    fig.subplots_adjust(left=0.31, right=0.98, top=0.97, bottom=0.14)
     return fig
 
 
@@ -152,9 +165,9 @@ def main():
                      ("e2e-process", fig_e2e), ("budget-lesson", fig_budget)]:
         for mode, t in THEMES.items():
             fig = fn(t)
-            fig.savefig(OUT / f"{name}-{mode}.png", facecolor=t["surface"])
+            fig.savefig(OUT / f"{name}-{mode}.png", facecolor=t["bg"])
             plt.close(fig)
-            print("wrote", OUT / f"{name}-{mode}.png")
+    print("wrote", len(list(OUT.glob("*.png"))), "files to", OUT)
 
 
 if __name__ == "__main__":

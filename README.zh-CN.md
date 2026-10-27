@@ -56,23 +56,12 @@ Agent 起步于一个手写的工具调用循环（M1），之后重构为显式
 
 ```mermaid
 flowchart LR
-    Q([用户问题]) --> recall
-    recall["recall<br/><small>画像 + 规则 + 记忆</small>"] --> compress
-    compress["compress<br/><small>归档溢出的轮次</small>"] --> plan
-    plan{"plan<br/><small>LLM 决策</small>"}
-    plan -- 调工具 --> act["act<br/><small>并行 ToolNode</small>"]
+    Q([问题]) --> recall --> compress --> plan{plan}
+    plan -- 调工具 --> act
     act --> compress
-    plan -- 超出预算 --> finalize["finalize<br/><small>强制收尾作答</small>"]
-    plan -- 最终回答 --> remember
-    finalize --> remember["remember<br/><small>抽取并写入记忆</small>"]
-    remember --> A([带引用的回答])
-
-    act -.-> T1[get_stock_price]
-    act -.-> T2[search_news]
-    act -.-> T3[fetch_page]
-    act -.-> T4[(retrieve)]
-    act -.-> T5[search_memory]
-    act -.-> T6[read_tool_result]
+    plan -- 超出预算 --> finalize --> remember
+    plan -- 作答 --> remember --> A([带引用的回答])
+    act -.- T[["get_stock_price · search_news · fetch_page<br/>retrieve · search_memory · read_tool_result"]]
 ```
 
 每一步的图状态都会持久化到 PostgreSQL，所以一次运行可以在新进程里恢复，每一步也都能回放。手写循环版（`core/agent.py`）作为参照实现保留，**接口与图版完全一致**，整套评测无需修改就能在两者上运行。
@@ -80,16 +69,16 @@ flowchart LR
 ### 2.2 Agentic 检索子图（`retrieve` 工具）
 
 ```mermaid
-flowchart TB
-    S([查询]) --> analyze["analyze<br/><small>意图、1–3 个信息需求、<br/>对照知识库目录生成过滤条件</small>"]
-    analyze -- "kb_fact" --> retrieve["retrieve<br/><small>逐需求:BM25 + 向量<br/>→ RRF → rerank</small>"]
-    analyze -- "实时 / 超出范围" --> pack
-    retrieve --> grade{"grade<br/><small>公司对吗?<br/>期间对吗?</small>"}
-    grade -- 证据充分 --> pack["pack<br/><small>去重、限额、<br/>编号 + 覆盖情况汇总</small>"]
-    grade -- "缺失,可改写" --> rewrite --> retrieve
-    grade -- "缺失,不可改写" --> web[web_fallback] --> pack
+flowchart LR
+    S([查询]) --> analyze --> retrieve --> grade{grade}
+    grade -- 证据充分 --> pack
+    grade -- 缺失 --> rewrite --> retrieve
+    grade -- 仍缺失 --> web[web_fallback] --> pack
+    analyze -. 实时 / 超出范围 .-> pack
     pack --> E([证据 + 汇总])
 ```
+
+`analyze` 把问题拆成 1–3 个带元数据过滤条件的信息需求；`grade` 逐个检查公司和期间是否对得上；`pack` 去重、按证据限额截取，并把覆盖情况汇总放在最前面（详见 [§3.2](#32-agentic-检索p1p2)）。
 
 `retrieve` 内部，每条查询走两阶段链路：
 
@@ -198,6 +187,8 @@ flowchart TB
   <img alt="检索消融:各配置的 Hit@5 与 MRR" src="assets/figures/retrieval-ablation-light.png">
 </picture>
 
+<sub>**图 1.** 同一批 24 篇文档、72 道事实题上的检索消融。每一层对 Hit@5（蓝）和 MRR（橙）的影响；重排无法超过 Hit@30 = 0.93 的天花板。</sub>
+
 | # | 配置 | Hit@1 | Hit@5 | Hit@30 | MRR | 时延 p50 / p95 |
 |---|---|---|---|---|---|---|
 | 0 | 定长 500 字切块 + 向量（v1） | 0.153 | 0.306 | 0.542 | 0.228 | 1.1 s / 1.6 s |
@@ -236,6 +227,8 @@ flowchart TB
   <img alt="各配置在无答案题上的正确拒答数" src="assets/figures/agentic-refusal-light.png">
 </picture>
 
+<sub>**图 2.** 10 道无答案题上的正确拒答数。只做多路召回会让拒答变差；加上证据评估后恢复到 10 / 10，误拒 0 / 75。</sub>
+
 | # | 配置 | 命中 | MRR | 正确拒答 | 误拒 | LLM token / 题 | 时延 p50 / p95 |
 |---|---|---|---|---|---|---|---|
 | 4b* | 混合 + 8B + 阈值，取前 5 | 0.903 | 0.850 | 6 / 10 | 0 / 75 | 0 | 2.9 s / 7.8 s |
@@ -256,6 +249,8 @@ flowchart TB
   <source media="(prefers-color-scheme: dark)" srcset="assets/figures/e2e-process-dark.png">
   <img alt="v1、混合、agentic 三种模式下每题的工具调用与联网次数" src="assets/figures/e2e-process-light.png">
 </picture>
+
+<sub>**图 3.** 端到端每题的工作量（14 道题）。通过率在两轮之间的噪声范围内；这些过程指标在多轮之间是稳定的。</sub>
 
 同一个 Agent、同样 14 道题，只换检索模式。
 
@@ -298,6 +293,8 @@ flowchart TB
   <source media="(prefers-color-scheme: dark)" srcset="assets/figures/budget-lesson-dark.png">
   <img alt="不设预算、预算过紧、标定后预算三种情况的总成本" src="assets/figures/budget-lesson-light.png">
 </picture>
+
+<sub>**图 4.** 三种预算设置下，5 道回归题一轮的总成本；三种设置都是 5 / 5 通过。预算落在健康区间内会打断正常运行，反而更贵。</sub>
 
 第一版预算凭直觉设成 ¥0.03 / 90 秒。实测健康运行的分布是 ¥0.0074–0.0533、5.8–133.6 秒，这个上限**低于最差的一次健康运行**，于是在正常工作途中就被触发了。结果是既付了已完成部分的钱，又多付一次 `finalize` 的钱，总成本多了 40%，质量毫无提升。
 

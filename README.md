@@ -48,23 +48,12 @@ Four failure modes drive the design. Each later section maps back to one of them
 
 ```mermaid
 flowchart LR
-    Q([User question]) --> recall
-    recall["recall<br/><small>profile + rules + memory</small>"] --> compress
-    compress["compress<br/><small>archive overflow rounds</small>"] --> plan
-    plan{"plan<br/><small>LLM decides</small>"}
-    plan -- tool calls --> act["act<br/><small>parallel ToolNode</small>"]
+    Q([Question]) --> recall --> compress --> plan{plan}
+    plan -- tool calls --> act
     act --> compress
-    plan -- budget exceeded --> finalize["finalize<br/><small>forced answer</small>"]
-    plan -- final answer --> remember
-    finalize --> remember["remember<br/><small>extract + write memory</small>"]
-    remember --> A([Answer with citations])
-
-    act -.-> T1[get_stock_price]
-    act -.-> T2[search_news]
-    act -.-> T3[fetch_page]
-    act -.-> T4[(retrieve)]
-    act -.-> T5[search_memory]
-    act -.-> T6[read_tool_result]
+    plan -- over budget --> finalize --> remember
+    plan -- answer --> remember --> A([Answer + citations])
+    act -.- T[["get_stock_price · search_news · fetch_page<br/>retrieve · search_memory · read_tool_result"]]
 ```
 
 The graph state is checkpointed to PostgreSQL after every step, so a run can resume in a new process and every step can be replayed. The hand-written loop (`core/agent.py`) is kept with the **same interface** as a reference implementation, and the whole evaluation suite runs unchanged against both.
@@ -72,16 +61,16 @@ The graph state is checkpointed to PostgreSQL after every step, so a run can res
 ### 2.2 Agentic retrieval subgraph (`retrieve` tool)
 
 ```mermaid
-flowchart TB
-    S([query]) --> analyze["analyze<br/><small>intent, 1–3 info needs,<br/>filters vs. KB catalog</small>"]
-    analyze -- "kb_fact" --> retrieve["retrieve<br/><small>per need: BM25 + dense<br/>→ RRF → rerank</small>"]
-    analyze -- "realtime / out of scope" --> pack
-    retrieve --> grade{"grade<br/><small>right company?<br/>right period?</small>"}
-    grade -- sufficient --> pack["pack<br/><small>dedupe, budget,<br/>refs + coverage summary</small>"]
-    grade -- "missing, rewritable" --> rewrite --> retrieve
-    grade -- "missing, not rewritable" --> web[web_fallback] --> pack
+flowchart LR
+    S([query]) --> analyze --> retrieve --> grade{grade}
+    grade -- sufficient --> pack
+    grade -- missing --> rewrite --> retrieve
+    grade -- still missing --> web[web_fallback] --> pack
+    analyze -. realtime / out of scope .-> pack
     pack --> E([evidence + summary])
 ```
+
+`analyze` splits the question into 1–3 information needs with metadata filters; `grade` checks each need for the right company and period; `pack` deduplicates, applies the evidence budget and puts a coverage summary first (details in [§3.2](#32-agentic-retrieval-p1-p2)).
 
 Inside `retrieve`, each query runs a two-stage pipeline. **BM25** (jieba tokens, sparse vectors stored in Qdrant) and **dense** retrieval (Qwen3-Embedding) each return 30 candidates. **Reciprocal Rank Fusion** merges them, and the **Qwen3-Reranker-8B** cross-encoder reorders the merged list with a calibrated 0.5 threshold. Each hit is then expanded from its child chunk to the parent section.
 
@@ -165,6 +154,8 @@ The same events can be exported over OpenTelemetry to Phoenix as a waterfall tra
   <img alt="Retrieval ablation: Hit@5 and MRR per configuration" src="assets/figures/retrieval-ablation-light.png">
 </picture>
 
+<sub>**Figure 1.** Retrieval ablation on 72 fact questions over the same 24 documents. Each layer moves Hit@5 (blue) and MRR (orange); reranking cannot exceed the Hit@30 ceiling of 0.93.</sub>
+
 | # | Configuration | Hit@1 | Hit@5 | Hit@30 | MRR | Latency p50 / p95 |
 |---|---|---|---|---|---|---|
 | 0 | Fixed 500-char chunks + dense (v1) | 0.153 | 0.306 | 0.542 | 0.228 | 1.1 s / 1.6 s |
@@ -197,6 +188,8 @@ A Chinese question about an English filing shares no tokens with it, so BM25 fin
   <img alt="Correct refusals on unanswerable questions per configuration" src="assets/figures/agentic-refusal-light.png">
 </picture>
 
+<sub>**Figure 2.** Correct refusals on 10 unanswerable questions. Multi-query recall alone makes refusal worse; evidence grading restores it with 0 / 75 false refusals.</sub>
+
 | # | Configuration | Hit | MRR | Correct refusal | False refusal | LLM tokens / q | Latency p50 / p95 |
 |---|---|---|---|---|---|---|---|
 | 4b* | Hybrid + 8B + threshold, top 5 | 0.903 | 0.850 | 6 / 10 | 0 / 75 | 0 | 2.9 s / 7.8 s |
@@ -217,6 +210,8 @@ A Chinese question about an English filing shares no tokens with it, so BM25 fin
   <source media="(prefers-color-scheme: dark)" srcset="assets/figures/e2e-process-dark.png">
   <img alt="Tool calls and web calls per question for v1, hybrid and agentic" src="assets/figures/e2e-process-light.png">
 </picture>
+
+<sub>**Figure 3.** Effort per end-to-end question (14 questions). Pass rates sit within run-to-run noise; these process metrics are stable across runs.</sub>
 
 Same agent and the same 14 questions; only the retrieval mode changes.
 
@@ -256,6 +251,8 @@ All suites below are offline and deterministic (fake LLM, recorded fixtures, loc
   <source media="(prefers-color-scheme: dark)" srcset="assets/figures/budget-lesson-dark.png">
   <img alt="Total cost with no budget, a too-tight budget, and a calibrated budget" src="assets/figures/budget-lesson-light.png">
 </picture>
+
+<sub>**Figure 4.** Total cost of the 5-case regression run under three budget settings; all three pass 5 / 5. A budget set inside the healthy range interrupts normal runs and costs more.</sub>
 
 The first budget was set by intuition (¥0.03 / 90 s). It sat **below the worst healthy run** (healthy runs measured ¥0.0074–0.0533 and 5.8–133.6 s), so it interrupted normal work. That run paid for the partial work and for an extra `finalize` call, which cost 40 % more with no quality gain. The fix was to measure the healthy distribution first and set the limit at about twice the worst healthy value. The calibration data is recorded in `core/budget.py`.
 
