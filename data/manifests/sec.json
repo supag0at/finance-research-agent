@@ -1,0 +1,137 @@
+{
+  "nvda-10-k-2026-01-25.htm": {
+    "ticker": "NVDA",
+    "doc_type": "10-K",
+    "period_end": "2026-01-25",
+    "filed": "2026-02-25",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "nvda-10-k-2025-01-26.htm": {
+    "ticker": "NVDA",
+    "doc_type": "10-K",
+    "period_end": "2025-01-26",
+    "filed": "2025-02-26",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581025000023/nvda-20250126.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "nvda-10-q-2026-07-26.htm": {
+    "ticker": "NVDA",
+    "doc_type": "10-Q",
+    "period_end": "2026-07-26",
+    "filed": "2026-08-26",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000075/nvda-20260726.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "amd-10-k-2025-12-27.htm": {
+    "ticker": "AMD",
+    "doc_type": "10-K",
+    "period_end": "2025-12-27",
+    "filed": "2026-02-04",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "amd-10-k-2024-12-28.htm": {
+    "ticker": "AMD",
+    "doc_type": "10-K",
+    "period_end": "2024-12-28",
+    "filed": "2025-02-05",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/2488/000000248825000012/amd-20241228.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "amd-10-q-2026-06-27.htm": {
+    "ticker": "AMD",
+    "doc_type": "10-Q",
+    "period_end": "2026-06-27",
+    "filed": "2026-08-05",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000123/amd-20260627.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "intc-10-k-2025-12-27.htm": {
+    "ticker": "INTC",
+    "doc_type": "10-K",
+    "period_end": "2025-12-27",
+    "filed": "2026-01-23",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/50863/000005086326000011/intc-20251227.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "intc-10-k-2024-12-28.htm": {
+    "ticker": "INTC",
+    "doc_type": "10-K",
+    "period_end": "2024-12-28",
+    "filed": "2025-01-31",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/50863/000005086325000009/intc-20241228.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "intc-10-q-2026-06-27.htm": {
+    "ticker": "INTC",
+    "doc_type": "10-Q",
+    "period_end": "2026-06-27",
+    "filed": "2026-07-24",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/50863/000005086326000157/intc-20260627.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "avgo-10-k-2025-11-02.htm": {
+    "ticker": "AVGO",
+    "doc_type": "10-K",
+    "period_end": "2025-11-02",
+    "filed": "2025-12-18",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/1730168/000173016825000121/avgo-20251102.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "avgo-10-k-2024-11-03.htm": {
+    "ticker": "AVGO",
+    "doc_type": "10-K",
+    "period_end": "2024-11-03",
+    "filed": "2024-12-20",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/1730168/000173016824000139/avgo-20241103.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "avgo-10-q-2026-08-02.htm": {
+    "ticker": "AVGO",
+    "doc_type": "10-Q",
+    "period_end": "2026-08-02",
+    "filed": "2026-09-10",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/1730168/000173016826000080/avgo-20260802.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "mu-10-k-2026-09-03.htm": {
+    "ticker": "MU",
+    "doc_type": "10-K",
+    "period_end": "2026-09-03",
+    "filed": "2026-10-09",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/723125/000072312526000023/mu-20260903.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "mu-10-k-2025-08-28.htm": {
+    "ticker": "MU",
+    "doc_type": "10-K",
+    "period_end": "2025-08-28",
+    "filed": "2025-10-03",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/723125/000072312525000028/mu-20250828.htm",
+    "trust_level": "official",
+    "lang": "en"
+  },
+  "mu-10-q-2026-05-28.htm": {
+    "ticker": "MU",
+    "doc_type": "10-Q",
+    "period_end": "2026-05-28",
+    "filed": "2026-06-25",
+    "source_url": "https://www.sec.gov/Archives/edgar/data/723125/000072312526000015/mu-20260528.htm",
+    "trust_level": "official",
+    "lang": "en"
+  }
+}

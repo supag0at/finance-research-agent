@@ -1,0 +1,2095 @@
+{
+  "summary": {
+    "total": 14,
+    "passed": 13,
+    "pass_rate": 0.929,
+    "avg_accuracy": 4.79,
+    "avg_completeness": 5.0,
+    "avg_faithfulness": 4.43,
+    "avg_grounded_ratio": 0.7,
+    "avg_elapsed_s": 27.07,
+    "cost": {
+      "cases_with_obs": 14,
+      "avg_llm_calls": 3.6,
+      "avg_prompt_tokens": 17254,
+      "avg_cached_tokens": 11173,
+      "avg_completion_tokens": 1768,
+      "avg_reasoning_tokens": 722,
+      "total_cost_cny": 0.374563,
+      "avg_cost_cny": 0.026754,
+      "tool_calls": 59,
+      "tool_fails": 3,
+      "tool_fail_rate": 0.051,
+      "tool_retries": 15,
+      "retry_skipped": 1,
+      "circuit_open": 0,
+      "hit_limit": 0,
+      "stop_early": 0,
+      "stop_reasons": [],
+      "node_time_share": {
+        "act": 0.546,
+        "plan": 0.454,
+        "compress": 0.0,
+        "recall": 0.0,
+        "remember": 0.0
+      },
+      "model_requested": "deepseek-flash",
+      "model_returned": "deepseek-flash"
+    },
+    "impl": "langgraph",
+    "rag_mode": "hybrid",
+    "cases": "rag"
+  },
+  "results": [
+    {
+      "id": "rag_nvda_dc_01",
+      "question": "英伟达 2026 财年数据中心业务收入增长了多少?主要是什么驱动的?",
+      "answer": "## 结论：2026 财年数据中心收入 1937.4 亿美元，同比 +68%\n\n数据来自知识库里的英伟达 FY2026 10-K（财年截至 2026 年 1 月 25 日）：\n\n| 项目 | FY2026 | FY2025 | 同比 |\n|---|---|---|---|\n| **数据中心合计** | **1,937.37 亿美元** | 1,151.86 亿 | **+68%** |\n| — 计算（Compute） | 1,623.61 亿 | 1,021.96 亿 | +59% |\n| — 网络（Networking） | 313.76 亿 | 129.90 亿 | +142% |\n| 公司总收入 | 2,159.38 亿 | 1,304.97 亿 | +65% |\n\n数据中心已占总收入的约 **90%**（193,737 / 215,938）。据网页资料，公司 2026 年 2 月 25 日发布的业绩公告也确认：FY2026 收入 2159 亿美元、同比 +65%，其中 Q4 单季 681 亿美元、同比 +73% [据网页资料]。\n\n## 主要驱动因素（10-K 原文口径）\n\n1. **Blackwell 平台放量**——这是核心驱动。10-K 明确写\"Revenue from Data Center computing grew 59% driven by demand for our Blackwell computing platform\"，并称\"Blackwell 架构占数据中心收入的绝大部分（majority）\"；Q2 FY2026 开始出货 Blackwell Ultra（含 GB300）的量产机型。\n2. **网络业务爆发式增长 +142%**——由 GB200/GB300 系统的 NVLink compute fabric 导入并持续放量，以及 Ethernet 与 InfiniBand 平台增长驱动。这是增速最快的一块，说明卖的不只是 GPU，而是整机柜级系统。\n3. **两条\"平台级迁移\"（accelerated computing 与 AI）**——10-K 把全年增长归因于此，即客户从通用 CPU 计算转向加速计算/AI 基础设施的资本开支周期。\n4. **商业模式从 Hopper HGX 系统转向 Blackwell 全栈数据中心方案**——带动了收入结构上移（但代价是毛利率从 75.0% 降到 71.1%，-3.9 个百分点）。\n\n## 两个需要一并看清的拖累项\n\n- **中国/H20 出口管制**：2025 年 4 月起 H20 对华出口需许可，公司在 FY2026 Q1 计提了 **45 亿美元** 的 H20 超额库存与采购义务费用；FY2026 中国（含香港）收入 196.77 亿美元，低于 FY2025 的 250.48 亿。8 月获批的许可下仅产生约 6000 万美元 H20 收入；2026 年 2 月获批的 H200 许可截至目前尚未产生收入。\n- **客户集中度**：FY2026 有单一直接客户占总收入 22%、另一家占 14%（上年为 12%、11%、11%），增长高度依赖少数大客户。\n\n## 后续验证（供参考）\n\nFY2027 Q2（截至 2026 年 7 月 26 日）数据中心收入 890.23 亿美元、同比 +117%，其中 Hyperscale 487.10 亿（+102%）、AI Clouds/工业/企业 403.13 亿（+138%），驱动因素是 Blackwell Ultra 放量——说明 FY2026 的增长趋势在下一财年仍在延续（口径已按新\"market platform\"分类重述）。\n\n> 说明：我尝试抓取英伟达官方新闻稿页面（nvidianews / investor.nvidia.com）被拦截，因此金额明细全部取自知识库中的 FY2026 10-K 与 FY2027 Q2 10-Q 原文；新闻稿数据仅用搜索结果摘要作交叉印证。",
+      "elapsed_s": 30.2,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "search_news",
+          "fetch_page",
+          "retrieve",
+          "retrieve",
+          "fetch_page"
+        ],
+        "grounded_ratio": 0.68,
+        "ungrounded_numbers": [
+          "1937.4",
+          "1937.37",
+          "1151.86",
+          "1623.61",
+          "1021.96",
+          "313.76",
+          "129.90",
+          "2159.38",
+          "1304.97",
+          "681",
+          "196.77",
+          "250.48",
+          "6000",
+          "890.23",
+          "487.10",
+          "403.13"
+        ],
+        "tool_call_count": 6,
+        "max_step": 4,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 1.0,
+        "ungrounded_numbers_unit": []
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 5,
+        "reason": "关键数字与驱动因素均与依据一致，覆盖同比68%、加速计算/AI、Blackwell及出处，未发现编造。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "a56de34a-472b-44ca-bbaf-040f22a88993",
+        "impl": "langgraph",
+        "thread_id": "e62c2b54-2e08-4ac9-91c5-a22a9cc2d315",
+        "question": "英伟达 2026 财年数据中心业务收入增长了多少?主要是什么驱动的?",
+        "total_ms": 30217.7,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.036734,
+          "llm_calls": 4,
+          "wall_s": 30.2,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 4,
+          "max_est_tokens": 13054,
+          "est_error_ratios": [
+            0.978,
+            0.569,
+            0.84
+          ]
+        },
+        "rag": null,
+        "llm": {
+          "calls": 4,
+          "ms": 14637.3,
+          "prompt_tokens": 23691,
+          "cached_tokens": 14592,
+          "completion_tokens": 2244,
+          "reasoning_tokens": 960,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.036734,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 4,
+            "total_ms": 4.4
+          },
+          "plan": {
+            "count": 4,
+            "total_ms": 14641.5
+          },
+          "act": {
+            "count": 3,
+            "total_ms": 13274.1
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.1
+          }
+        },
+        "tools": {
+          "search_news": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 1922.9,
+            "max_ms": 1922.9
+          },
+          "retrieve": {
+            "count": 3,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 13269.0,
+            "max_ms": 8214.9
+          },
+          "fetch_page": {
+            "count": 2,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 6.1,
+            "max_ms": 3.1
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_nvda_q_01",
+      "question": "英伟达最近一个财季的数据中心收入是多少,同比增长多少?",
+      "answer": "## 结论\n\n英伟达**最新已公布的财季是 2027 财年第二季度**(截至 2026 年 7 月 26 日,2026 年 8 月 26 日发布):\n\n| 指标 | FY2027 Q2 | 同比 | 环比 |\n|---|---|---|---|\n| **数据中心收入** | **890.23 亿美元** | **+117%** | +18% |\n| 其中 Hyperscale(超大规模客户) | 487.10 亿 | +102% | +13% |\n| 其中 ACIE(AI 云/工业/企业) | 403.13 亿 | +138% | +25% |\n| 公司总收入 | 962.21 亿 | +106% | +18% |\n| 毛利率 | 75.0% | +2.6 pts | +0.1 pts |\n\n**依据**:知识库中的 NVIDIA FY2027 Q2 10-Q(截至 2026-07-26,trust_level = official)明确写明:\"Data Center revenue was $89.0 billion, up 117% from a year ago and up 18% sequentially, driven by the ramp of our Blackwell Ultra infrastructure\" [1]。同一来源还提到,该季度销往中国的 Data Center Hopper 产品占数据中心收入不足 1% [1]。网页新闻(如 unite.ai、datacenterdynamics,2026-08-26/27)也独立印证了 890 亿美元、同比 +117%、环比 +18% 这一组数字,但其内容属于据网页资料的旁证 [2]。\n\n**补充说明**:\n- 部分财经媒体(如 Fool,2026-08-03)提到的\"752 亿美元\"是**上一季度(2027 财年 Q1,截至 2026-04-26)**的数据中心收入,并非最新数字。\n- 我在知识库里**没有找到 2027 财年第三季度(截至 2026 年 10 月)的业绩**,网页搜索也没有发现该季度财报发布的信息,因此以上是目前可核实的最新一季数据。若你需要 Q3 数据,需等公司正式发布后再核。",
+      "elapsed_s": 21.9,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "search_news",
+          "read_tool_result",
+          "search_news",
+          "read_tool_result"
+        ],
+        "grounded_ratio": 0.857,
+        "ungrounded_numbers": [
+          "890.23",
+          "487.10",
+          "403.13",
+          "962.21"
+        ],
+        "tool_call_count": 5,
+        "max_step": 5,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 1.0,
+        "ungrounded_numbers_unit": []
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 5,
+        "reason": "金额890.23亿美元、同比+117%、财季FY2027 Q2均与10-Q依据一致，且覆盖全部要点，未编造。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "77b58603-6c62-451a-aaae-67897ae76e2f",
+        "impl": "langgraph",
+        "thread_id": "d0592340-d3d7-41c3-acc1-3fc6f3b73f3a",
+        "question": "英伟达最近一个财季的数据中心收入是多少,同比增长多少?",
+        "total_ms": 21862.9,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.023514,
+          "llm_calls": 5,
+          "wall_s": 21.9,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 5,
+          "max_est_tokens": 8251,
+          "est_error_ratios": [
+            0.977,
+            0.577,
+            0.965,
+            0.94
+          ],
+          "readbacks": 2
+        },
+        "rag": null,
+        "llm": {
+          "calls": 5,
+          "ms": 11561.6,
+          "prompt_tokens": 24345,
+          "cached_tokens": 19200,
+          "completion_tokens": 1557,
+          "reasoning_tokens": 767,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.023514,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 5,
+            "total_ms": 5.8
+          },
+          "plan": {
+            "count": 5,
+            "total_ms": 11567.1
+          },
+          "act": {
+            "count": 4,
+            "total_ms": 10082.0
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "retrieve": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 3436.0,
+            "max_ms": 3436.0
+          },
+          "search_news": {
+            "count": 2,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 10071.1,
+            "max_ms": 6335.3
+          },
+          "read_tool_result": {
+            "count": 2,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 4.0,
+            "max_ms": 2.3
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_cambricon_01",
+      "question": "寒武纪 2025 年营业收入和归母净利润分别是多少?同比变化如何?",
+      "answer": "## 寒武纪（688256）2025 年业绩\n\n**核心数据（来自公司 2025 年年报）**\n\n| 项目 | 2025 年 | 2024 年 | 同比变化 |\n|---|---|---|---|\n| 营业收入 | 64.97 亿元（6,497,196,198.68 元） | 11.74 亿元 | **+453.21%** |\n| 归母净利润 | 20.59 亿元（2,059,228,538.67 元） | −4.52 亿元 | **扭亏为盈**（由亏转盈，增加约 25.12 亿元） |\n| 扣非归母净利润 | 17.70 亿元（1,769,934,157.68 元） | −8.65 亿元 | 扭亏为盈 |\n| 基本每股收益 | 4.93 元 | −1.09 元 | 由负转正 |\n\n年报“主要会计数据”表显示，营业收入从 1,174,464,377.35 元增至 6,497,196,198.68 元，同比增幅为 453.21%；归母净利润从 −452,338,791.01 元变为 2,059,228,538.67 元，该项在年报中被标注为“不适用”（因上年为负值，无法计算百分比）[1]。管理层讨论部分同样披露：营业收入较上年同期增加 532,273.18 万元，同比增长 453.21%；归母净利润 205,922.85 万元，扣非后 176,993.42 万元，均实现扭亏为盈[2]。\n\n**增长原因（年报口径）**：主要受益于人工智能行业算力需求的持续攀升，公司凭借产品竞争力持续拓展市场、推动 AI 应用场景落地，收入大幅增长；利润总额、净利润、扣非净利润扭亏为盈“主要系本期营业收入大幅增长所致”[3]。\n\n**补充信息**\n- 分季度看，Q1–Q4 营业收入分别为 11.11 亿、17.69 亿、17.27 亿、18.90 亿元；归母净利润分别为 3.55 亿、6.83 亿、5.67 亿、4.55 亿元[4]。\n- 研发投入占营业收入比例为 17.99%（2024 年为 91.30%），研发投入绝对额同比增长 9.03%[3]。\n- 经营活动产生的现金流量净额仍为 −4.98 亿元（上年 −16.18 亿元），虽大幅收窄但尚未转正[1]。\n- 归母净资产 118.36 亿元（+118.27%），总资产 134.38 亿元（+100.03%），增长主要来自收入规模扩大带动利润增长以及 2025 年度向特定对象发行新股募集资金[1][3]。\n\n**交叉验证**：多家券商年报点评与媒体解读均给出“2025 年营收 64.97 亿元、同比 +453.21%；归母净利润 20.59 亿元、上年同期 −4.52 亿元，实现年度扭亏为盈；扣非 17.70 亿元”的相同口径（据网页资料）[5][6]。\n\n**说明**：上述财务数字全部来自知识库中公司 2025 年年报原文（cninfo/688256-年报-2025.pdf），trust_level 为 official；新闻搜索仅用于交叉验证，未改变任何数字。\n\n---\n**依据来源**\n[1] 寒武纪 2025 年年报，“第二节 公司简介和主要财务指标 > 六、近三年主要会计数据和财务指标（一）主要会计数据”，第 9 页\n[2] 同上，“第三节 管理层讨论与分析 > 五、报告期内主要经营情况”，第 26 页\n[3] 同上，“（二）主要财务指标”及说明，第 10 页\n[4] 同上，“八、2025 年分季度主要财务数据”，第 10 页\n[5] 新浪财经《寒武纪(688256)2025年报点评：算力需求爆发驱动扭亏》，2026-03-17（据网页资料）\n[6] 今日头条《寒武纪2025年年报深度解读》，2026-05-02（据网页资料）",
+      "elapsed_s": 15.0,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "search_news"
+        ],
+        "grounded_ratio": 0.806,
+        "ungrounded_numbers": [
+          "11.74",
+          "25.12",
+          "11.11",
+          "17.69",
+          "17.27",
+          "3.55",
+          "6.83",
+          "5.67",
+          "4.98",
+          "16.18",
+          "118.36",
+          "134.38"
+        ],
+        "tool_call_count": 2,
+        "max_step": 2,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 0.871,
+        "ungrounded_numbers_unit": [
+          "11.74",
+          "25.12",
+          "11.11",
+          "17.27",
+          "3.55",
+          "6.83",
+          "16.18",
+          "134.38"
+        ]
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 5,
+        "reason": "关键数字与同比均与年报依据一致，覆盖要点完整，未编造事实。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "fac4994f-1858-40e7-9533-fb1879cf0477",
+        "impl": "langgraph",
+        "thread_id": "ae1d7109-0b1e-400a-8787-72f747c3a57f",
+        "question": "寒武纪 2025 年营业收入和归母净利润分别是多少?同比变化如何?",
+        "total_ms": 14965.6,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.016912,
+          "llm_calls": 2,
+          "wall_s": 15.0,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 2,
+          "max_est_tokens": 4538,
+          "est_error_ratios": [
+            0.979
+          ]
+        },
+        "rag": null,
+        "llm": {
+          "calls": 2,
+          "ms": 6733.3,
+          "prompt_tokens": 5443,
+          "cached_tokens": 2048,
+          "completion_tokens": 1255,
+          "reasoning_tokens": 181,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.016912,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 2,
+            "total_ms": 1.9
+          },
+          "plan": {
+            "count": 2,
+            "total_ms": 6735.1
+          },
+          "act": {
+            "count": 1,
+            "total_ms": 8027.9
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "retrieve": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 3392.1,
+            "max_ms": 3392.1
+          },
+          "search_news": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 8025.3,
+            "max_ms": 8025.3
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_compare_dc_01",
+      "question": "对比一下英伟达和 AMD 最近一个完整财年的数据中心业务收入和增速。",
+      "answer": "## 结论先给\n\n两家公司“最近一个完整财年”的财年终点不同（差约 1 个月），但对齐后都属于**2025 自然年区间**：\n\n| 指标 | 英伟达 | AMD |\n|---|---|---|\n| 完整财年 | FY2026（截至 2026‑01‑25） | FY2025（截至 2025‑12‑27） |\n| 数据中心收入 | **1,937.37 亿美元**（$193,737M） | **166.35 亿美元**（$16,635M） |\n| 上一年同期 | 1,151.86 亿美元（FY2025） | 125.79 亿美元（FY2024） |\n| 同比增速 | **+68%**（+68.2%） | **+32%**（+32.2%） |\n| 数据中心占总收入 | 约 89.7%（总营收 2,159.38 亿） | 约 48.0%（总营收 346.39 亿） |\n\n来源：NVIDIA 10‑K FY2026（分部/终端市场表，p.78；FY2026 摘要，p.37）；AMD 10‑K FY2025（Segment Reporting 注 4，p.74；MD&A 分部表，p.55）。\n\n## 关键对比点\n\n**1）规模差距约 11.6 倍，增量差距约 19 倍。**\n英伟达数据中心收入 1,937 亿 vs AMD 166 亿，体量差约 1,771 亿美元（193,737/16,635 ≈ 11.6x）。但看增量更悬殊：英伟达一年净增 785.5 亿美元，AMD 净增 40.6 亿美元，**英伟达的“新增收入”本身约等于 AMD 全年数据中心收入的 4.7 倍**（785.5/166.35）。\n\n**2）增速方向一致，但档位不同。**\n两家都靠 AI 加速器+服务器 CPU 驱动：英伟达 FY2026 数据中心 +68%，其中计算 +59%、网络 +142%（NVLink/以太网/InfiniBand 拉动）[NVDA 10‑K FY2026, p.40]；AMD FY2025 数据中心 +32%，主要来自 EPYC（第五代）与 Instinct MI350 系列 [AMD 10‑K FY2025, p.50]。\n\n**3）AMD 的收入基数小、但盈利能见度给出了额外信息。**\nAMD 数据中心分部营业利润 36.03 亿美元（分部营业利润率约 21.7%），且被约 4.4 亿美元的 MI308 出口管制相关存货/采购计提拖累 [AMD 10‑K FY2025, p.55]。英伟达现在按 Compute & Networking / Graphics 报告分部，**不再披露“数据中心”分部的营业利润**，所以两家在这一层不可直接比。\n\n**4）口径不完全可比，需注意三点：**\n- 英伟达财报口径的 Data Center 含网络业务（FY2026 网络 313.76 亿美元，超过 AMD 整个数据中心分部），AMD 的 Data Center 则包含服务器 CPU、GPU、DPU、FPGA、自适应 SoC；\n- 财年区间：英伟达 FY2026 ≈ 2025‑01‑26 至 2026‑01‑25，AMD FY2025 ≈ 2024‑12‑29 至 2025‑12‑27，英伟达多含约 1 个月；\n- 相对全球 AI 资本开支周期，两家基数处于完全不同阶段，倍数/百分比并列时容易高估可比性。\n\n## 顺带的最新进度（**不是完整财年，仅作趋势参考**）\n\n- 英伟达 FY2027 上半年（截至 2026‑07‑26）数据中心收入 1,642.69 亿美元，去年同期 802.08 亿；其中 FY2027 Q2 单季 890.23 亿美元，同比 +117%（Blackwell Ultra 放量）。\n- AMD FY2026 上半年（截至 2026‑06‑27）数据中心收入 125 亿美元，同比 +81%；Q2 单季 66.6 亿，同比 +107%。\n\n也就是说，AMD 最近两个季度的数据中心增速已抬升到 80%~100% 区间，与英伟达的 100%+ 差距在收窄——但绝对金额差距（单季约 823 亿美元）仍在扩大。\n\n**数据缺口说明**：本次只用了公司 SEC  filings（10‑K/10‑Q）；没有调用行情和网页新闻，因此不含股价表现、分析师预期或第三方（如 IDC/Mercury）的份额测算。如果你要“市场份额口径”的对比，需要另找第三方数据源，知识库里目前只有公司财报口径。",
+      "elapsed_s": 27.9,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "retrieve",
+          "retrieve",
+          "retrieve",
+          "retrieve"
+        ],
+        "grounded_ratio": 0.632,
+        "ungrounded_numbers": [
+          "1937.37",
+          "166.35",
+          "1151.86",
+          "125.79",
+          "68.2",
+          "32.2",
+          "89.7",
+          "2159.38",
+          "48.0",
+          "346.39",
+          "11.6",
+          "1771",
+          "11.6",
+          "785.5",
+          "40.6",
+          "785.5",
+          "166.35",
+          "36.03",
+          "21.7",
+          "4.4",
+          "313.76",
+          "1642.69",
+          "802.08",
+          "890.23",
+          "66.6"
+        ],
+        "tool_call_count": 5,
+        "max_step": 4,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 0.985,
+        "ungrounded_numbers_unit": [
+          "823"
+        ]
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 4,
+        "reason": "核心数字（1937亿、+68%、166亿、+32%）均与依据一致，且明确财年口径差异；仅少数精确到百万位及英伟达上年上半年数值依据未直接给出。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "a2093e4b-fe5c-4286-8629-b8654f5c1ece",
+        "impl": "langgraph",
+        "thread_id": "c80b1ee0-2c89-480f-bf24-a7014c1e08e5",
+        "question": "对比一下英伟达和 AMD 最近一个完整财年的数据中心业务收入和增速。",
+        "total_ms": 27906.8,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.056531,
+          "llm_calls": 4,
+          "wall_s": 27.9,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 4,
+          "max_est_tokens": 19886,
+          "est_error_ratios": [
+            0.977,
+            0.55,
+            0.75
+          ]
+        },
+        "rag": null,
+        "llm": {
+          "calls": 4,
+          "ms": 17855.6,
+          "prompt_tokens": 40078,
+          "cached_tokens": 24576,
+          "completion_tokens": 3068,
+          "reasoning_tokens": 1625,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.056531,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 4,
+            "total_ms": 3.9
+          },
+          "plan": {
+            "count": 4,
+            "total_ms": 17859.3
+          },
+          "act": {
+            "count": 3,
+            "total_ms": 9835.6
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "retrieve": {
+            "count": 5,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 15736.3,
+            "max_ms": 3642.9
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_smic_gm_01",
+      "question": "中芯国际 2026 年上半年的毛利率是多少?和去年同期相比怎么样?",
+      "answer": "## 中芯国际 2026 年上半年毛利率\n\n**按 A 股半年报（中国企业会计准则）口径：23.2%，同比上升 1.3 个百分点**（去年同期 21.9%）[1]\n\n具体数字（半年报\"主要会计数据和财务指标\"及利润表科目变动分析）：\n\n| 项目 | 2026 H1 | 2025 H1 | 变动 |\n|---|---|---|---|\n| 营业收入 | 386.35 亿元 | 323.48 亿元 | +19.4% |\n| 营业成本 | 296.89 亿元 | 252.61 亿元 | +17.5% |\n| 毛利 | 89.46 亿元 | 70.87 亿元 | +26.2% |\n| 毛利率 | **23.2%** | **21.9%** | **+1.3pct** |\n\n（我用半年报数据复算核对过：89.46/386.35 = 23.2%，70.87/323.48 = 21.9%，与披露值一致。）[1]\n\n**按港股中期报告（00981.HK，美元口径）披露：毛利率 22.9%，同比增加 1.5 个百分点**（据此推算去年同期约 21.4%）；收入 55.11 亿美元，同比 +23.7%；净利率 17.5%，同比 +7.0pct [2][3]。据网页资料，两个口径的绝对值和同比幅度略有差异（22.9% vs 23.2%），应源于 A 股与港股（CAS 与 HKFRS）在收入/成本列报口径上的差别，趋势与幅度方向一致。\n\n## 毛利率改善的原因（公司披露）\n\n- **毛利变动原因**：平均单价上升及产品组合变动 [1]\n- **量的支撑**：销售晶圆（折合 8 英寸标准逻辑）由上年同期 468.2 万片增至 537.9 万片，+14.9%；平均售价由 6,482 元升至 6,667 元 [1]\n- **成本端反向压力**：营业成本上升除销量增加、产品组合变动外，还有**折旧增加**因素，部分抵消毛利率改善幅度 [1]\n- 产品结构上，消费电子占比由 40.8% 升至 45.1%、工业与汽车由 10.1% 升至 15.4%，智能手机由 24.6% 降至 17.8%；12 英寸占比 77.4% [1]\n\n## 数据来源说明\n\n- [1] 中芯国际《2026 年半年度报告》（688981，巨潮资讯，trust_level = official，知识库检索所得），第 8 页主要财务指标表、第 22 页利润表科目变动分析表及收入结构分析\n- [2] 港股 2026 年中期业绩摘要（Reportify 整理，据网页资料）——毛利率 22.9%、+1.5pct\n- [3] 搜狐/富途等对 2026 年半年报的报道（据网页资料）——美元收入 55.11 亿、归母利润 6.77 亿美元、经营现金流 32.07 亿美元等\n\n需要提醒的是：文中港股口径的\"去年同期约 21.4%\"是我由披露的同比增幅倒推得出，不是直接引用原文数值；如需精确到小数点后一位的历史值，需要调阅 2025 年中期报告原文。",
+      "elapsed_s": 14.4,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "search_news",
+          "read_tool_result"
+        ],
+        "grounded_ratio": 0.825,
+        "ungrounded_numbers": [
+          "323.48",
+          "296.89",
+          "252.61",
+          "89.46",
+          "70.87",
+          "89.46",
+          "70.87",
+          "323.48",
+          "21.4",
+          "21.4"
+        ],
+        "tool_call_count": 3,
+        "max_step": 3,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 0.965,
+        "ungrounded_numbers_unit": [
+          "21.4",
+          "21.4"
+        ]
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 4,
+        "reason": "核心毛利率23.2%、同比+1.3pct及对比数据均准确；但港股/A股口径差异原因属推断，依据未直接支持。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "b9c8abf9-8f84-41d6-8e1c-0a8e32d893a2",
+        "impl": "langgraph",
+        "thread_id": "15db9fab-e2ce-4163-9641-0d9b6a9eecbe",
+        "question": "中芯国际 2026 年上半年的毛利率是多少?和去年同期相比怎么样?",
+        "total_ms": 14357.3,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.021179,
+          "llm_calls": 3,
+          "wall_s": 14.4,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 3,
+          "max_est_tokens": 5650,
+          "est_error_ratios": [
+            0.977,
+            1.012
+          ],
+          "readbacks": 1
+        },
+        "rag": null,
+        "llm": {
+          "calls": 3,
+          "ms": 10349.3,
+          "prompt_tokens": 11582,
+          "cached_tokens": 7168,
+          "completion_tokens": 1508,
+          "reasoning_tokens": 557,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.021179,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 3,
+            "total_ms": 2.5
+          },
+          "plan": {
+            "count": 3,
+            "total_ms": 10352.3
+          },
+          "act": {
+            "count": 2,
+            "total_ms": 3797.5
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "search_news": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 2700.8,
+            "max_ms": 2700.8
+          },
+          "retrieve": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 3793.7,
+            "max_ms": 3793.7
+          },
+          "read_tool_result": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 1.5,
+            "max_ms": 1.5
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_hygon_rd_01",
+      "question": "海光信息 2025 年研发投入是多少?占营业收入的比例大概多少?",
+      "answer": "## 海光信息（688041）2025 年研发投入\n\n**核心数据（来自 2025 年年度报告）**\n\n| 项目 | 2025 年 | 2024 年 | 变动 |\n|---|---|---|---|\n| 研发投入合计 | **45.69 亿元**（4,568,552,721.28 元） | 34.46 亿元 | **+32.58%** |\n| 研发投入占营业收入比例 | **31.78%** | 37.61% | 减少 5.83 个百分点 |\n| 营业收入 | 143.77 亿元（14,376,889,476.95 元） | 91.62 亿元 | +56.92% |\n| 费用化研发投入 | 41.45 亿元 | 28.59 亿元 | +45.01% |\n| 资本化研发投入 | 4.23 亿元 | 5.87 亿元 | -27.92% |\n| 研发投入资本化比重 | 9.26% | 17.04% | 减少 7.78 个百分点 |\n\n**占比为什么下降？** 公司年报写明，研发投入同比增长 32.58%，但由于营业收入增幅（56.92%）高于研发投入增幅，因此研发投入占营业收入的比例同比有所下降 [1][2]。也就是说，研发投入强度并未减弱，只是营收增长更快。\n\n**配套数据**\n- 研发人员 2,766 人，占员工总数 82.99%；研发人员同比增长 28.23%，薪酬合计 22.61 亿元 [3]\n- 本期研发投入增加的原因：研发人员数量增长 28.23%、人员费用及股份支付增加，同时项目研发相关的技术服务费和研发材料费增长 [3]\n- 资本化率下降的原因：新立项的下一代海光通用处理器芯片设计及前瞻性技术研究以费用化为主，而新一代海光协处理器工艺实现等资本化项目验收结项 [3]\n\n**在研项目本期投入前五（合计 40.86 亿元）**\n1. 新一代海光通用处理器芯片设计：17.89 亿元（累计 46.62 亿元）\n2. 下一代海光通用处理器芯片设计：7.73 亿元\n3. 海光协处理器新技术研究：7.14 亿元\n4. 处理器关键技术研发项目：5.04 亿元\n5. 海光新型处理器芯片设计：3.07 亿元 [3]\n\n**交叉验证**：第三方报道（据网页资料）称\"全年研发投入达 45.69 亿元，同比增长 32.58%，占营业收入比例 31.78%\"，与年报一致 [4]。\n\n**数据来源**：公司 2025 年年度报告（cninfo 披露），\"近三年主要会计数据和财务指标\"\"研发投入情况表\"\"在研项目情况\"等章节；网页报道作为交叉印证。\n\n如果您还想同时了解 2026 年上半年的情况（半年报显示研发投入 26.52 亿元、同比增长 55.05%、占比 29.15%），我也可以补充说明；如果只问 2025 年全年，以上即答案。",
+      "elapsed_s": 11.1,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "search_news"
+        ],
+        "grounded_ratio": 0.667,
+        "ungrounded_numbers": [
+          "34.46",
+          "143.77",
+          "91.62",
+          "41.45",
+          "28.59",
+          "4.23",
+          "5.87",
+          "22.61",
+          "40.86",
+          "17.89",
+          "46.62",
+          "7.73",
+          "7.14",
+          "5.04",
+          "3.07",
+          "26.52"
+        ],
+        "tool_call_count": 2,
+        "max_step": 2,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 0.812,
+        "ungrounded_numbers_unit": [
+          "34.46",
+          "41.45",
+          "28.59",
+          "5.87",
+          "40.86",
+          "17.89",
+          "7.73",
+          "5.04",
+          "3.07"
+        ]
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 5,
+        "reason": "研发投入45.69亿元、占营收31.78%等均与年报一致；覆盖两个要点且无编造。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "b2e78e33-54ee-49f9-bb95-b4f276b85730",
+        "impl": "langgraph",
+        "thread_id": "4d27fcc3-44b8-4e0c-bfa0-568260c8cf4e",
+        "question": "海光信息 2025 年研发投入是多少?占营业收入的比例大概多少?",
+        "total_ms": 11107.6,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.01821,
+          "llm_calls": 2,
+          "wall_s": 11.1,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 2,
+          "max_est_tokens": 6073,
+          "est_error_ratios": [
+            0.978
+          ]
+        },
+        "rag": null,
+        "llm": {
+          "calls": 2,
+          "ms": 6288.9,
+          "prompt_tokens": 7092,
+          "cached_tokens": 2048,
+          "completion_tokens": 1005,
+          "reasoning_tokens": 194,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.01821,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 2,
+            "total_ms": 1.7
+          },
+          "plan": {
+            "count": 2,
+            "total_ms": 6290.9
+          },
+          "act": {
+            "count": 1,
+            "total_ms": 4610.8
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "search_news": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 3006.1,
+            "max_ms": 3006.1
+          },
+          "retrieve": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 4609.2,
+            "max_ms": 4609.2
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_intel_foundry_01",
+      "question": "英特尔 2025 财年的代工(Intel Foundry)业务经营情况怎么样,亏损多少?",
+      "answer": "## 结论先说\n\n**英特尔 2025 财年(截至 2025 年 12 月 27 日)Intel Foundry 分部:营收 178.26 亿美元,经营亏损 103.18 亿美元(经营亏损率 58%)。**\n\n亏损比 2024 财年的 132.91 亿美元收窄了 29.73 亿美元,但绝对额仍在百亿美元量级。\n\n## 分部三年数据(SEC 10-K,单位:百万美元)\n\n| 财年 | 营收 | 成本及经营费用 | 经营损益 | 经营亏损率 |\n|---|---|---|---|---|\n| 2025 (Dec 27, 2025) | 17,826 | 28,144 | **-10,318** | -58% |\n| 2024 (Dec 28, 2024) | 17,317 | 30,608 | -13,291 | -77% |\n| 2023 (Dec 30, 2023) | 18,504 | 25,587 | -7,083 | -38% |\n\n来源:Intel FY2025 Form 10-K,分部数据(Note 3: Operating Segments 及 MD&A \"Intel Foundry Financial Performance\",第 25、75 页)。\n\n## 亏损为什么收窄(公司口径)\n\n10-K 明确列了三项主因:\n1. **资产减值与加速折旧大幅减少**:2025 年仅 9.5 亿美元的减值/加速折旧,而 2024 年为 33 亿美元(主要针对 Intel 7 制程相关制造资产)——这是亏损收窄的最大来源。\n2. **经营费用下降约 12 亿美元**:主要来自 2025/2024 重组计划下裁员带来的薪酬支出减少及其他降本措施。\n3. **部分被抵消**:2025 年因 Intel 18A 早期爬坡产品的成本高于可变现净值,公司内部转移的存货跌价准备增加了 8.49 亿美元。\n\n## 收入结构:这是关键问题所在\n\n- 2025 年营收 178.26 亿美元中,**内部转移收入(卖给自己产品部门)约 175 亿美元**(同比 +3.61 亿,主要来自 Intel 3/4/18A 晶圆量和后端服务增加);\n- **真正来自外部客户的收入只有 3.07 亿美元**(2024 年 1.59 亿),即外部代工占比不到 2%。\n\n同时 10-K 的风险因素里写明:\"我们在吸引重要外部代工客户方面迄今并不成功\",并提示若放缓/放弃 Intel 14A 及后续节点,该业务能否建立\"高度不确定\"。\n\n*解读(非公司原文)*:这个分部亏损是把自家产品部门当客户、按接近市价内部结算后的制造端结果,因此 103 亿亏损主要反映先进制程爬坡成本、产能利用率不足和前期减值,并不等于\"对外代工业务亏了 103 亿\";但也说明代工业务目前仍完全依赖内部订单支撑。\n\n## 顺带对照全公司口径\n\n2025 财年英特尔合并营收 528.53 亿美元,合并经营亏损 22.14 亿美元(2024 年为亏损 116.78 亿)。也就是说,**代工分部的 103 亿经营亏损,被 Intel Products 的 127.39 亿经营利润等大幅抵消后,才收敛到合并层面 -22.14 亿**。据网页资料,媒体报道的\"2025 全年营收 529 亿美元、与上一年基本持平\"与这一数字一致 [ref],可作交叉印证。\n\n## 一个前瞻参考(2026 年上半年)\n\n据 FY2026 Q2 10-Q:Intel Foundry 上半年营收 111.86 亿美元(同比 +21 亿),经营亏损 45.26 亿美元(上年同期 -54.88 亿),亏损继续收窄,主要因少了 7.97 亿资产减值等期间费用;外部收入 4.67 亿美元,其中不少来自 Altera 2025 年三季度出表后转为外部客户——**注意这部分是\"内部客户变外部客户\"的口径变化,不代表新增第三方订单**。\n\n**数据缺口说明**:知识库里没有找到 2025 年单季度(Q4)的代工分部拆分数字,以及代工分部层面的资本开支/自由现金流明细,因此上面的判断均基于年度分部数据。",
+      "elapsed_s": 33.0,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "search_news",
+          "retrieve",
+          "retrieve",
+          "retrieve",
+          "retrieve"
+        ],
+        "grounded_ratio": 0.655,
+        "ungrounded_numbers": [
+          "178.26",
+          "103.18",
+          "132.91",
+          "29.73",
+          "9.5",
+          "8.49",
+          "178.26",
+          "3.61",
+          "3.07",
+          "1.59",
+          "528.53",
+          "22.14",
+          "116.78",
+          "127.39",
+          "22.14",
+          "111.86",
+          "45.26",
+          "54.88",
+          "7.97",
+          "4.67"
+        ],
+        "tool_call_count": 5,
+        "max_step": 4,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 1.0,
+        "ungrounded_numbers_unit": []
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 4,
+        "reason": "关键分部数据、亏损原因及对照数字均与依据一致，覆盖充分；但风险因素“不成功”等引述在依据中无直接支撑。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "6cffd3f8-bcfd-4dc0-a437-581d09abeb0b",
+        "impl": "langgraph",
+        "thread_id": "c6c809e0-b9cc-48b8-bff7-1299066c4a08",
+        "question": "英特尔 2025 财年的代工(Intel Foundry)业务经营情况怎么样,亏损多少?",
+        "total_ms": 33041.5,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.047716,
+          "llm_calls": 4,
+          "wall_s": 33.0,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 4,
+          "max_est_tokens": 18400,
+          "est_error_ratios": [
+            0.976,
+            0.607,
+            0.621
+          ]
+        },
+        "rag": null,
+        "llm": {
+          "calls": 4,
+          "ms": 17787.1,
+          "prompt_tokens": 32889,
+          "cached_tokens": 19456,
+          "completion_tokens": 2509,
+          "reasoning_tokens": 1214,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.047716,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 4,
+            "total_ms": 4.0
+          },
+          "plan": {
+            "count": 4,
+            "total_ms": 17791.0
+          },
+          "act": {
+            "count": 3,
+            "total_ms": 15039.5
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "search_news": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 1836.6,
+            "max_ms": 1836.6
+          },
+          "retrieve": {
+            "count": 4,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 17509.6,
+            "max_ms": 8014.2
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_mu_hbm_01",
+      "question": "美光 2026 财年的 10-K 里怎么描述 HBM 业务的?",
+      "answer": "## 结论先行\n\n美光 FY2026 10-K(财年截至 2026 年 9 月 3 日、共 53 周)对 HBM 的描述分布在**四处**:产品技术定义、事业部(CMBU)业务描述、风险因素、以及物业/产能章节。核心口径是:把 HBM 定位为\"面向所有数据中心客户的 AI 关键产品\",并明确 HBM 归入云存储事业部(CMBU),FY2026 已完成 HBM4 12-high 的量产爬坡。\n\n---\n\n## 一、产品技术章节:对 HBM 的定义(10-K 第 8 页,Products, Market, and Sales > Product Technologies)\n\n原文定义要点:\n- HBM 是\"采用硅通孔(TSV)连接进行更高效通信的 3D 堆叠 DRAM 架构\";\n- 相比其他类型内存,**带宽更高、功耗更低**;\n- 因此\"非常适合需要高数据吞吐与能效的应用,例如 AI 应用和高性能计算\"。\n\n同一章节给出规模背景:2026 财年 DRAM 总收入 **1,006.8 亿美元**(2025 年 285.8 亿、2024 年 176.0 亿)。注意:该章节未单列 HBM 收入。\n\n## 二、事业部章节:HBM 放在哪里、卖得怎么样(第 9 页,CMBU)\n\n- CMBU 的定位原话:\"focused on memory solutions for large hyperscale cloud customers, and **HBM for all data center customers**\"——即 HBM 面向**全部**数据中心客户,而非仅超大云厂商;除 HBM 外该部门还卖 DDR、LPDDR、GDDR。\n- 数据中心终端需求描述:云服务器因 AI 与数据密集负载,对 DRAM(含 HBM)与 NAND 的需求量\"显著上升\",驱动力包括企业生成式 AI、主权 AI(sovereign AI)、以及本地基础设施向云迁移。\n- CMBU 收入:**2026 年 430.9 亿美元**,2025 年 135.2 亿,2024 年 37.9 亿;2026 年对数据中心市场的销售\"主要由 DDR5、HBM 和 LPDDR5 产品构成\"(未拆分 HBM 单项金额)。\n\n## 三、产品路线图与量产状态(同章节,这是最实质的 HBM 描述)\n\n| 节点 | 10-K FY2026 表述 |\n|---|---|\n| HBM3E 12-high | 2026 年**占 HBM 出货量的大部分**(majority) |\n| HBM4 36GB 12-high | 2026 年**开始量产**(volume production),基于 1β 节点,带宽更高、能效更优 |\n| HBM4 48GB 16-high | 已向多家关键客户**送样**,用于下一代 AI 平台 |\n| HBM4E | 基于 1γ DRAM 节点的下一代产品,**开发进展顺利**,预计 **2027 日历年**放量 |\n\n技术卖点表述:HBM4 在 base logic die 与 DRAM core die 上使用先进 CMOS 与先进金属化工艺,且**全部自研自产(in-house)**;配合公司独有的 HBM 设计、封装与测试能力,构成其\"性能领先与低功耗领先\"的依据。\n\n对比 FY2025 10-K 同一段:当时 HBM4 36GB 12-high 只是\"送样\",HBM3E 12-high 是\"2025 年第四季度占出货多数\"——可见一年内从送样走到量产。\n\n## 四、风险因素章节:HBM 的三个风险点(第 27–28 页)\n\n1. **技术壁垒**:多芯片层堆叠的 HBM 要达到可接受的良率与品质,以及继续增加 3D 堆叠层数、提高 cell 层数、先进封装、功耗与可靠性等,都是障碍。\n2. **产能\"换算\"风险(原文最有信息量的一条)**:由于性能更高、制程更复杂,**同样制程节点下生产相同 bit 数,HBM 需要更多晶圆和更多洁净室空间**;若 HBM 需求转弱、供应商把产能从 HBM 切回普通 DRAM,\"可能导致普通 DRAM 供给大幅增加\",供过于求则压制价格、损害财务表现。\n3. **反向的供给不足风险**:需求持续上升时可能无法足量扩产,被迫做制造优先级与客户/市场配额分配,紧张供应与高价格可能损害长期客户关系、引发下游供应链扰动甚至法律或监管关注。\n\n## 五、物业/产能章节(第 49–50 页)\n\n- 已宣布计划**在美国本土建立先进 HBM 封装能力**(bring advanced HBM packaging capabilities to the United States),与 CHIPS 法案补贴(合计最高 64 亿美元直接资助)及纽约、博伊西扩产计划并列陈述。\n\n---\n\n## 需要说明的数据缺口\n\n- **10-K 未单独披露 HBM 收入金额或 HBM 占比**:检索到的所有 FY2026 10-K 段落只给到 CMBU 合计收入(430.9 亿美元)和 DRAM 合计收入(1,006.8 亿美元),HBM 单项数字在知识库中**没有找到**,我不做估算。\n- 未检索到 10-K 中关于 HBM 长期供货协议(take-or-pay)、HBM 市场份额或具体客户名单的表述,这部分知识库里没有覆盖。\n- 以上全部来自知识库中 `sec/mu-10-k-2026-09-03.htm`(trust_level 标为 official,即 10-K 原文),非网页二手资料。",
+      "elapsed_s": 43.5,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "search_news",
+          "read_tool_result",
+          "retrieve",
+          "read_tool_result",
+          "retrieve"
+        ],
+        "grounded_ratio": 0.692,
+        "ungrounded_numbers": [
+          "1006.8",
+          "285.8",
+          "176.0",
+          "430.9",
+          "135.2",
+          "37.9",
+          "430.9",
+          "1006.8"
+        ],
+        "tool_call_count": 6,
+        "max_step": 5,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 1.0,
+        "ungrounded_numbers_unit": []
+      },
+      "judge": {
+        "accuracy": 4,
+        "completeness": 5,
+        "faithfulness": 4,
+        "reason": "数字与出处基本准确；但“完成HBM4 12-high量产爬坡”应为“开始量产”，属轻微夸大。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "701880d3-c645-4b4f-9525-cd817817b469",
+        "impl": "langgraph",
+        "thread_id": "0a7bdf98-5398-4695-8500-a120fad415dd",
+        "question": "美光 2026 财年的 10-K 里怎么描述 HBM 业务的?",
+        "total_ms": 43546.6,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.040287,
+          "llm_calls": 5,
+          "wall_s": 43.5,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 5,
+          "max_est_tokens": 12451,
+          "est_error_ratios": [
+            0.98,
+            0.521,
+            0.654,
+            0.948
+          ],
+          "readbacks": 2
+        },
+        "rag": null,
+        "llm": {
+          "calls": 5,
+          "ms": 19373.7,
+          "prompt_tokens": 32841,
+          "cached_tokens": 23936,
+          "completion_tokens": 2690,
+          "reasoning_tokens": 1007,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.040287,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 5,
+            "total_ms": 5.6
+          },
+          "plan": {
+            "count": 5,
+            "total_ms": 19378.8
+          },
+          "act": {
+            "count": 4,
+            "total_ms": 23951.8
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.1
+          }
+        },
+        "tools": {
+          "retrieve": {
+            "count": 3,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 19453.4,
+            "max_ms": 11661.0
+          },
+          "search_news": {
+            "count": 1,
+            "fail": 0,
+            "retry": 1,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 7899.9,
+            "max_ms": 7899.9
+          },
+          "read_tool_result": {
+            "count": 2,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 4.5,
+            "max_ms": 2.6
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_avgo_vmware_01",
+      "question": "博通 2025 财年基础设施软件业务收入是多少?和上一年比增长了多少?",
+      "answer": "## 结论\n\n**博通(AVGO)2025 财年基础设施软件业务收入为 270.29 亿美元,同比增长 26%(增加 55.51 亿美元)**[1]\n\n## 数据明细(来自 2025 财年 10-K,官方文件)\n\n| 项目 | FY2025(截至 2025/11/2) | FY2024(截至 2024/11/3) | 变化 | 变化率 |\n|---|---|---|---|---|\n| 基础设施软件收入 | 270.29 亿美元 | 214.78 亿美元 | +55.51 亿 | **+26%** |\n| 半导体解决方案收入 | 368.58 亿美元 | 300.96 亿美元 | +67.62 亿 | +22% |\n| 合计净收入 | 638.87 亿美元 | 515.74 亿美元 | +123.13 亿 | +24% |\n\n补充要点:\n- 基础设施软件占总净收入的 **42%**,与上一年度占比持平;半导体解决方案也占 58%,结构未变 [1]。\n- 分部门经营利润:基础设施软件从 FY2024 的 139.77 亿美元升至 FY2025 的 **207.65 亿美元** [2]。\n- 再往前看,FY2023 该业务收入仅 76.37 亿美元 [2],说明近两年增长主要来自大型软件收购(VMware)并表后的完整贡献;FY2025 为 52 周财年,FY2024 为 53 周财年 [3],因此可比性上实际\"每周年化\"增速还略高于 26%。\n\n**依据来源**:[1] Broadcom 10-K FY2025,ITEM 7 \"Net Revenue by Segment\" 表格(第 41 页);[2] 同一 10-K,ITEM 8 \"Reportable Segments\"(第 85 页);[3] 同一 10-K,\"Basis of Presentation\"(第 53 页)。均为 SEC 官方文件,trust_level 为 official。\n\n另:公司已于 2025 年 12 月 11 日发布第四季度及 2025 财年业绩新闻稿(据网页资料),如需季度拆分口径可再查该新闻稿。",
+      "elapsed_s": 11.6,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "search_news"
+        ],
+        "grounded_ratio": 0.5,
+        "ungrounded_numbers": [
+          "270.29",
+          "55.51",
+          "270.29",
+          "214.78",
+          "55.51",
+          "368.58",
+          "300.96",
+          "67.62",
+          "638.87",
+          "515.74",
+          "123.13",
+          "139.77",
+          "207.65",
+          "76.37"
+        ],
+        "tool_call_count": 2,
+        "max_step": 2,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 1.0,
+        "ungrounded_numbers_unit": []
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 4,
+        "reason": "核心收入270.29亿、同比+26%均与10-K一致且覆盖完整；仅VMware并表等补充解释依据未直接给出，忠实度略扣。"
+      },
+      "passed": false,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "603f9fab-d26e-41e6-ae76-0fdf1e691f8f",
+        "impl": "langgraph",
+        "thread_id": "5f369855-6927-4c01-8972-6eab05bfe8a6",
+        "question": "博通 2025 财年基础设施软件业务收入是多少?和上一年比增长了多少?",
+        "total_ms": 11640.8,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.01508,
+          "llm_calls": 2,
+          "wall_s": 11.6,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 2,
+          "max_est_tokens": 8755,
+          "est_error_ratios": [
+            0.979
+          ]
+        },
+        "rag": null,
+        "llm": {
+          "calls": 2,
+          "ms": 5709.8,
+          "prompt_tokens": 6235,
+          "cached_tokens": 2048,
+          "completion_tokens": 828,
+          "reasoning_tokens": 206,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.01508,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 2,
+            "total_ms": 1.8
+          },
+          "plan": {
+            "count": 2,
+            "total_ms": 5711.7
+          },
+          "act": {
+            "count": 1,
+            "total_ms": 5720.5
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "retrieve": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 3464.4,
+            "max_ms": 3464.4
+          },
+          "search_news": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 5718.2,
+            "max_ms": 5718.2
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_noanswer_apple_01",
+      "question": "苹果公司 2025 财年服务业务收入是多少?",
+      "answer": "## 结论\n\n苹果 **2025 财年(截至 2025 年 9 月 27 日)服务业务收入约为 1,091.6 亿美元($109.16B)**,这是服务收入首次突破 1,000 亿美元。\n\n依据(均为网页资料,未经知识库核验):\n- 据网页资料,Apple 财报显示 2025 财年总营收 $416.16 亿…即 4,161.6 亿美元,其中服务收入全年 **$109.16 亿**美元、第四财季服务收入 $28.75 亿美元 [1]。\n- 据网页资料,Apple FY2025 10-K 中服务收入为 **$109.16 亿**,首次超过 1,000 亿美元,服务业务毛利率 75.4%,是产品业务 36.8% 的两倍多 [2]。\n- 据网页资料,服务收入占净销售额比重从 2021 财年的 18.7% 升至 2025 财年的 26.2% [3],与上面 $109.16B / $416.16B ≈ 26.2% 相互吻合,可作为交叉验证。\n\n## 需要提示的几点\n\n1. **本地知识库里没有 Apple 的财报原文。** 我用 `retrieve` 检索\"苹果 2025 财年服务业务收入\",返回的却是 **Broadcom 的 FY2025 10-K**(其中\"Subscriptions and services\"为 $19,040 百万),与 Apple 无关,不能拿来替代。因此该数字完全依赖网页资料。\n2. **有一处数据冲突**:另有网页称 FY2025 服务净销售额为 $109.34B(上一年 $96.17B)[4]。但两个来源($109.16B)与占比测算(26.2%)一致,$109.34B 属于少数异值,我更倾向 $109.16B;若需要绝对精确值,建议直接核对 Apple 向 SEC 提交的 FY2025 10-K 原文。\n3. Apple 官方新闻稿页面(apple.com/newsroom)和其他几个财经站点的抓取被环境**拦截**,无法打开原文,只能依据搜索摘要层面的信息,故无法给出精确到百万美元的分项(如广告、App Store、云服务各自贡献)。\n4. 2024 财年可比基数为 **$96.17B** [4],据此推算 2025 财年服务收入同比增速约 **+13.5%**;据网页资料称增长主要由广告、App Store 和云服务销售提升驱动 [4]。\n\n---\n**参考来源**\n[1] Constellation Research, \"Apple's annual services revenue tops $109 billion\", 2025-10-30(网页资料)\n[2] Axis Intelligence, \"Apple Statistics 2026\"(引 Apple FY2025 10-K,网页资料)\n[3] Techlila, \"Apple Services Revenue Statistics 2026\"(网页资料,仅取到搜索摘要)\n[4] AppleMagazine, \"Apple Services Growth Turns 2025 Into a Record Year\"(网页资料)",
+      "elapsed_s": 33.2,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "search_news",
+          "fetch_page",
+          "fetch_page",
+          "fetch_page",
+          "search_news",
+          "read_tool_result"
+        ],
+        "grounded_ratio": 0.884,
+        "ungrounded_numbers": [
+          "1091.6",
+          "1000",
+          "4161.6",
+          "1000",
+          "13.5"
+        ],
+        "tool_call_count": 7,
+        "max_step": 5,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 1.0,
+        "ungrounded_numbers_unit": []
+      },
+      "judge": {
+        "accuracy": 3,
+        "completeness": 5,
+        "faithfulness": 4,
+        "reason": "主结论$109.16B有据且覆盖要点，但服务收入/Q4多次单位换算错误。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "b36256d9-a985-4130-942a-de2c00d0038a",
+        "impl": "langgraph",
+        "thread_id": "8f5b6f87-88c2-4471-90f3-8c40ce4feca6",
+        "question": "苹果公司 2025 财年服务业务收入是多少?",
+        "total_ms": 33222.4,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.020243,
+          "llm_calls": 5,
+          "wall_s": 33.2,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 5,
+          "max_est_tokens": 5037,
+          "est_error_ratios": [
+            0.978,
+            0.684,
+            0.998,
+            0.917
+          ],
+          "readbacks": 1
+        },
+        "rag": null,
+        "llm": {
+          "calls": 5,
+          "ms": 12142.0,
+          "prompt_tokens": 17285,
+          "cached_tokens": 13824,
+          "completion_tokens": 1596,
+          "reasoning_tokens": 490,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.020243,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 5,
+            "total_ms": 5.1
+          },
+          "plan": {
+            "count": 5,
+            "total_ms": 12146.6
+          },
+          "act": {
+            "count": 4,
+            "total_ms": 20859.3
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.1
+          }
+        },
+        "tools": {
+          "retrieve": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 3960.6,
+            "max_ms": 3960.6
+          },
+          "search_news": {
+            "count": 2,
+            "fail": 0,
+            "retry": 2,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 20846.8,
+            "max_ms": 11096.0
+          },
+          "fetch_page": {
+            "count": 3,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 8.6,
+            "max_ms": 3.0
+          },
+          "read_tool_result": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 1.3,
+            "max_ms": 1.3
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_noanswer_period_01",
+      "question": "寒武纪 2027 年的营业收入是多少?",
+      "answer": "## 结论：2027 年营收目前**没有实际数据**，只有券商预测，而且分歧极大\n\n寒武纪（688256）最新已披露的实际财报只到 **2026 年半年报**，2027 年属于未来期间，公司没有给出、也不存在 2027 年的实际营业收入或官方指引。知识库中检索到的官方财报数据如下（可作为推算起点）：\n\n| 期间 | 营业收入 | 同比 |\n|---|---|---|\n| 2024 年 | 11.74 亿元 | — [1] |\n| 2025 年 | 64.97 亿元（649,719.62 万元） | +453.21% [1][2] |\n| 2026 年上半年 | 59.96 亿元（5,995,573,619.61 元） | +108.13% [3][4] |\n\n（注：2026 年上半年归母净利润 23.11 亿元，同比 +122.61% [3]）\n\n## 公开预测（均为第三方研报，未经知识库核验，仅供参考）\n\n各机构差异大：\n\n- **高盛**：2026 年 8 月底将寒武纪 2027 年营收预测从 391.07 亿元**上调至 912.62 亿元**（上调 133%），2028 年从 621.58 亿元上调至 1724.70 亿元，12 个月目标价 1841 元。据网页资料 [5]\n- **某券商研报（同花顺 F10 汇总）**：预计 2026–2028 年营业收入分别为 **155.83 / 264.66 / 396.75 亿元**，归母净利润 52.26 / 98.21 / 155.92 亿元。据网页资料 [6]\n- **摩根士丹利**：认为 MLU692 完成客户测试并进入批量交付后，将成为寒武纪 **2027 年收入增长的主要来源**，但交付量取决于芯片制造（依赖中芯国际 N+1/N+2 产能）与 HBM 供应两个瓶颈。据网页资料 [7]（该片段未给出具体营收数字）\n- 另有自媒体梳理的机构 2027 年 EPS 预测区间为 19.71–21.17 元，据网页资料 [8]；此类自媒体来源可靠性较低。\n\n## 需要注意的几点\n\n1. **预测区间从约 265 亿元到约 913 亿元，相差 3 倍以上**，说明对 2027 年几乎没有共识。这与上面提到的产能/HBM 供应约束直接相关 [7]。\n2. 2026 年上半年营收已达 59.96 亿元，若按部分乐观预测，2027 年意味着要在 2026 全年基础上再翻数倍，假设非常激进。\n3. 行情数据工具本次调用失败（返回错误，未提供数据），因此我没有当前股价和市值，无法用最新股价去校验目标价。这一项数据缺失。\n4. 知识库中**没有**找到公司自身对 2027 年的任何业绩指引或订单/收入目标。\n\n如果你需要，我可以进一步抓取高盛或大摩研报的原始页面细节，或者查一下 2026 年三季报是否已披露（那会把预测基数抬高）。",
+      "elapsed_s": 22.5,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve",
+          "search_news",
+          "retrieve",
+          "get_stock_price"
+        ],
+        "grounded_ratio": 0.878,
+        "ungrounded_numbers": [
+          "11.74",
+          "64.97",
+          "59.96",
+          "23.11",
+          "913",
+          "59.96"
+        ],
+        "tool_call_count": 4,
+        "max_step": 3,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 1.0,
+        "ungrounded_numbers_unit": []
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 5,
+        "reason": "准确说明无2027实际数据，并列出2025、2026H1官方数据；预测数字均与依据一致且标明来源，无编造。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "92d05ca7-1262-4a7c-bb51-c2457e416536",
+        "impl": "langgraph",
+        "thread_id": "bf4722c4-16d4-4a55-a9c8-3ba30f4daf0f",
+        "question": "寒武纪 2027 年的营业收入是多少?",
+        "total_ms": 22456.8,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.021717,
+          "llm_calls": 3,
+          "wall_s": 22.5,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 3,
+          "max_est_tokens": 6016,
+          "est_error_ratios": [
+            0.978,
+            0.994
+          ]
+        },
+        "rag": null,
+        "llm": {
+          "calls": 3,
+          "ms": 10284.2,
+          "prompt_tokens": 10973,
+          "cached_tokens": 6272,
+          "completion_tokens": 1508,
+          "reasoning_tokens": 492,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.021717,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 3,
+            "total_ms": 2.9
+          },
+          "plan": {
+            "count": 3,
+            "total_ms": 10287.2
+          },
+          "act": {
+            "count": 2,
+            "total_ms": 11965.6
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "retrieve": {
+            "count": 2,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 9056.9,
+            "max_ms": 4882.2
+          },
+          "search_news": {
+            "count": 1,
+            "fail": 0,
+            "retry": 1,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 7787.4,
+            "max_ms": 7787.4
+          },
+          "get_stock_price": {
+            "count": 1,
+            "fail": 0,
+            "retry": 1,
+            "fallback": 1,
+            "retry_skipped": 1,
+            "circuit_open": 0,
+            "total_ms": 1762.1,
+            "max_ms": 1762.1
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_concept_pe_01",
+      "question": "什么是市盈率?通俗解释一下。",
+      "answer": "## 市盈率（P/E）通俗解释\n\n**一句话：你为这家公司每 1 元钱利润，愿意付出多少钱。**\n\n知识库里的定义是：市盈率 = 股价 ÷ 每股收益（EPS），用来衡量“为每一元盈利支付的价格” [1]。\n\n### 打个比方\n\n假设一家公司一年赚 100 万元，总股本 100 万股，那么每股收益就是 1 元。\n- 如果股价是 20 元，市盈率就是 20 倍；这相当于你花 20 元，买它每年 1 元的盈利。\n- 换句话说，在盈利不变的前提下，理论上要 20 年才能“赚回”你付的钱。\n\n（以上是凑整数便于理解而假设的例子，不是任何真实公司的数据。）\n\n### 怎么用\n\n**1. 横向比：跟同行比**\n同一行业里，市盈率明显高于同行的公司，通常意味着市场认为它未来增长更快。但也可能意味着股价被高估。\n\n**2. 纵向比：跟自己的历史比**\n一家公司现在的市盈率处在它过去 5 年、10 年的什么位置，比单看一个绝对值更有意义。\n\n**3. 关键陷阱：分母是“利润”**\n- 利润为负时市盈率没有意义（或显示为负）；亏损公司一般不谈市盈率，而改用**市销率（P/S = 股价 ÷ 每股营收）**这类指标，成长股常用 [1]。\n- 利润里如果包含一次性的资产处置收益等，会人为压低市盈率，看着“便宜”其实不便宜。\n\n**4. 动态 vs 静态**\n- **静态／TTM 市盈率**：用已经发生的过去 12 个月利润算。\n- **前瞻市盈率（Forward P/E）**：用未来预期利润算 [1]。成长型公司两者可能差很多；前瞻市盈率更低，说明市场预期利润会涨，但这也建立在预测之上，预测一旦不达预期，股价修正会很剧烈。\n\n**5. 高低本身不带好坏标签**\n- 高市盈率 ≈ 市场预期高增长（也可解读为：高预期需要高增长来兑现，容错空间小）。\n- 低市盈率 ≈ 便宜，也可能是市场认为它要衰退（所谓“价值陷阱”）。\n知识库明确指出“市盈率高通常意味着市场对未来增长预期高”[1]，这是描述预期，不是判断贵贱的结论。\n\n---\n\n如果你有具体想看的股票，我可以拉行情和新闻，帮你把这套框架套到具体标的上；不过要注意，行情工具只提供价格和涨跌幅，**不提供盈利数据**，所以精确的市盈率数值需要你从财报或行情软件补上。\n\n**依据来源：**\n[1] 知识库《投资常用术语速查》> 估值相关（P/E、Forward P/E、P/S 的定义），内部资料，trust_level: internal。",
+      "elapsed_s": 10.3,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "retrieve"
+        ],
+        "grounded_ratio": 0.0,
+        "ungrounded_numbers": [
+          "100",
+          "100"
+        ],
+        "tool_call_count": 1,
+        "max_step": 2,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 1.0,
+        "ungrounded_numbers_unit": []
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 4,
+        "reason": "定义与估值含义准确，覆盖两要点；示例合理。少量补充如TTM、横向纵向比较非依据明示，但无关键编造。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "6d65f645-f773-4382-9946-80fc8304af77",
+        "impl": "langgraph",
+        "thread_id": "548fa50f-34f1-4c31-bb8c-a9192331e2a2",
+        "question": "什么是市盈率?通俗解释一下。",
+        "total_ms": 10256.1,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.007566,
+          "llm_calls": 2,
+          "wall_s": 10.3,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 2,
+          "max_est_tokens": 1519,
+          "est_error_ratios": [
+            0.978
+          ]
+        },
+        "rag": null,
+        "llm": {
+          "calls": 2,
+          "ms": 6543.2,
+          "prompt_tokens": 2570,
+          "cached_tokens": 2048,
+          "completion_tokens": 805,
+          "reasoning_tokens": 113,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.007566,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 2,
+            "total_ms": 2.1
+          },
+          "plan": {
+            "count": 2,
+            "total_ms": 6548.1
+          },
+          "act": {
+            "count": 1,
+            "total_ms": 3505.5
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "retrieve": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 3503.8,
+            "max_ms": 3503.8
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_route_price_01",
+      "question": "英伟达(NVDA)最近 5 个交易日股价怎么样?",
+      "answer": "## 英伟达（NVDA）近 5 个交易日行情\n\n**数据来源：** get_stock_price（source: yahoo-chart）\n\n| 指标 | 近 5 个交易日 | 近 10 个交易日（对照） |\n|---|---|---|\n| 最新收盘价 | 210.96 | 210.96 |\n| 区间涨跌幅 | **-2.82%** | -6.79% |\n| 区间最高 | 222.19 | 228.86 |\n| 区间最低 | 210.18 | 210.18 |\n\n**从数据看出的几点：**\n\n1. **近一周小幅回落。** 5 个交易日区间累计下跌 2.82%，收盘价从最高 222.19 回落到 210.96。\n2. **跌幅主要发生在最近这一周。** 10 个交易日区间跌幅为 -6.79%，而近 5 日为 -2.82%，说明前 5 个交易日（更早那半段）跌得更多，近期属于延续走弱而非单日急跌。\n3. **收盘价几乎贴近区间最低点。** 最新收盘 210.96 与 5 日（以及 10 日）最低价 210.18 只差 0.78，收盘位于区间下沿，属于弱势收尾形态。\n\n**需要说明的缺口（重要）：**\n\n- **没有逐日数据。** 工具只返回区间汇总（最新收盘价、区间涨跌、区间高低点），没有给出每个交易日的单日涨跌幅和成交量，所以无法判断哪一天是主要下跌日、单日跌幅多大。上面的“跌幅集中在更早几天”是从 5 日与 10 日跌幅对比推断的，不是逐日核实的结果。\n- **没有找到下跌原因的新闻依据。** 我尝试用两组不同关键词做新闻搜索（中文“英伟达 股价 下跌 原因”、英文“Nvidia stock weekly performance”），均返回 `[工具失败:search_news] No results found`，该工具本轮连续瞬时故障，按建议未再重试。所以本轮**没有获取到任何关于股价变动原因的消息面素材**，我不对原因作推测。\n- 价格数据来自网页行情接口（yahoo-chart），未经知识库核验。\n\n如果你需要，我可以换一种方式补齐逐日明细或原因面信息——例如你再给我一个具体的新闻查询方向，或允许我用其他工具抓取行情页面，我再试一次。",
+      "elapsed_s": 49.0,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "get_stock_price",
+          "get_stock_price",
+          "search_news",
+          "search_news"
+        ],
+        "grounded_ratio": 0.938,
+        "ungrounded_numbers": [
+          "0.78"
+        ],
+        "tool_call_count": 4,
+        "max_step": 4,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 0.938,
+        "ungrounded_numbers_unit": [
+          "0.78"
+        ]
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 4,
+        "reason": "数字均与依据一致且覆盖近5日行情；但部分趋势推断超出逐日数据，仅作区间对比。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "61755db8-d833-4ecc-84e4-2e3d1d7f7dbb",
+        "impl": "langgraph",
+        "thread_id": "ce31334f-414f-4b00-92c0-fd8cd25f84c2",
+        "question": "英伟达(NVDA)最近 5 个交易日股价怎么样?",
+        "total_ms": 48965.3,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.014746,
+          "llm_calls": 4,
+          "wall_s": 49.0,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 4,
+          "max_est_tokens": 2117,
+          "est_error_ratios": [
+            0.98,
+            0.997,
+            0.931
+          ]
+        },
+        "rag": null,
+        "llm": {
+          "calls": 4,
+          "ms": 11409.0,
+          "prompt_tokens": 5909,
+          "cached_tokens": 4608,
+          "completion_tokens": 1495,
+          "reasoning_tokens": 745,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.014746,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 4,
+            "total_ms": 4.3
+          },
+          "plan": {
+            "count": 4,
+            "total_ms": 11412.6
+          },
+          "act": {
+            "count": 3,
+            "total_ms": 37344.2
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "get_stock_price": {
+            "count": 2,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 1656.3,
+            "max_ms": 832.3
+          },
+          "search_news": {
+            "count": 2,
+            "fail": 2,
+            "retry": 6,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 36507.1,
+            "max_ms": 18667.0
+          }
+        },
+        "errors": []
+      }
+    },
+    {
+      "id": "rag_mixed_amd_01",
+      "question": "AMD 2025 财年数据中心收入是多少?最近一个月股价表现如何?",
+      "answer": "## 一、AMD 2025 财年数据中心收入\n\n**166.35 亿美元（$16.6 billion），同比增长 32%**（2024 财年为 125.79 亿美元）。\n\n依据（来自知识库中的官方 10-K 原文，trust_level: official）：\n\n- 分部收入表：Data Center 净收入 2025 财年 **16,635** 百万美元，2024 财年 12,579 百万美元，2023 财年 6,496 百万美元 [2]\n- MD&A 表述：“Data Center net revenue of $16.6 billion in 2025 increased by 32%… primarily driven by strong demand for our 5th generation AMD EPYC™ processors and AMD Instinct™ MI350 Series GPUs” [4]\n- 数据中心**经营利润** 2025 财年 **36.03 亿美元**（2024 年 34.82 亿美元），同比仅增约 3%；原因是收入增长被销售成本上升抵消，其中包含与美国政府对 AMD Instinct MI308 出口管制相关的约 **4.4 亿美元**存货及相关净费用 [1]\n- 全公司口径参照：2025 财年总净收入 346.39 亿美元（+34%），毛利率 50%（2024 年 49%）[2][4]\n\n补充说明：新财年第一季度（2026 年 5 月）的财报细节在知识库中未见检索到完整内容，本次未涉及。\n\n## 二、最近一个月股价表现\n\n行情工具（来源 yahoo-chart）返回的统计窗口（30 个交易日）为：\n\n| 项目 | 数值 |\n|---|---|\n| 最新收盘价 | 516.79 美元 |\n| 期间最高 | 658.52 美元 |\n| 期间最低 | 480.33 美元 |\n| change_pct | +4.74% |\n\n观察：股价在最近一个月内从 658.52 美元的高点回落，最新收盘 516.79 美元，比区间高点低约 **21.5%**，但仍比区间低点高约 7.6%，因此整体处于区间偏下位置，波动幅度很大（区间振幅约 37%）。\n\n需要提示两点数据缺口，以免误读：\n\n1. 工具返回的 `change_pct: +4.74` **没有明确标注它是单日涨跌幅还是区间累计涨跌幅**，我不能替你断定，所以不据此给出“近一个月涨了 4.74%”这类结论；30 个交易日的确切累计涨跌幅这次没有取到。\n2. 想做网页细节核对，但抓取 stockanalysis.com 的页面时被安全策略拦截（[已拦截] 不允许访问该地址），因此没有拿到逐日收盘序列。\n\n关于回调原因，网页搜索只找到零散、**未经知识库核验**的媒体解读，且时间点未必对应本窗口：据网页资料，有分析将 AMD 的股价波动归因于“数据中心营收虽高增长、但资本支出激增”以及“AI 芯片高估值、高波动”的市场情绪（如 2026 年 8 月的报道）[网页资料]。这类说法我没有官方来源佐证，**不建议直接当作本轮回调的原因**。\n\n## 三、没能完成的部分\n\n- 用“AMD 2025 财年数据中心收入 财报”这一方向做新闻检索时连续瞬时失败（系统已自动重试并判定重试无效），因此财报相关的新闻面背景没有取到，替代方案是直接采用 10-K 原文，反而更可靠。",
+      "elapsed_s": 55.4,
+      "checks": {
+        "tool_ok": true,
+        "missing_tools": [],
+        "tools_used": [
+          "get_stock_price",
+          "retrieve",
+          "search_news",
+          "search_news",
+          "fetch_page",
+          "search_news",
+          "read_tool_result"
+        ],
+        "grounded_ratio": 0.778,
+        "ungrounded_numbers": [
+          "166.35",
+          "125.79",
+          "36.03",
+          "34.82",
+          "4.4",
+          "346.39",
+          "21.5",
+          "7.6"
+        ],
+        "tool_call_count": 7,
+        "max_step": 5,
+        "must_not_violated": [],
+        "citation": {
+          "has_refs": false,
+          "cited": null,
+          "ref_valid_ratio": null,
+          "cite_support_ratio": null,
+          "cite_support_ratio_unit": null,
+          "rag_summaries": []
+        },
+        "grounded_ratio_unit": 0.944,
+        "ungrounded_numbers_unit": [
+          "21.5",
+          "7.6"
+        ]
+      },
+      "judge": {
+        "accuracy": 5,
+        "completeness": 5,
+        "faithfulness": 5,
+        "reason": "数据中心收入、增速及股价区间数据均与依据一致，且明确标注不确定项，无编造。"
+      },
+      "passed": true,
+      "passed_unit": true,
+      "obs": {
+        "run_id": "76125ed2-6564-4307-83a7-1388b34b0ca2",
+        "impl": "langgraph",
+        "thread_id": "274544de-4df3-4cab-820b-c5af4b490291",
+        "question": "AMD 2025 财年数据中心收入是多少?最近一个月股价表现如何?",
+        "total_ms": 55364.7,
+        "hit_limit": false,
+        "stop_reason": null,
+        "budget": {
+          "tripped": null,
+          "cost_cny": 0.034128,
+          "llm_calls": 5,
+          "wall_s": 55.4,
+          "limits": {
+            "cost_cny": 0.1,
+            "wall_s": 240.0,
+            "llm_calls": 8,
+            "repeat": 2
+          }
+        },
+        "memory": null,
+        "ctx": {
+          "views": 5,
+          "max_est_tokens": 6766,
+          "est_error_ratios": [
+            0.977,
+            0.675,
+            0.834,
+            0.946
+          ],
+          "readbacks": 1
+        },
+        "rag": null,
+        "llm": {
+          "calls": 5,
+          "ms": 18877.2,
+          "prompt_tokens": 20616,
+          "cached_tokens": 14592,
+          "completion_tokens": 2687,
+          "reasoning_tokens": 1551,
+          "model_requested": "deepseek-flash",
+          "model_returned": "deepseek-flash"
+        },
+        "cost_cny": 0.034128,
+        "nodes": {
+          "recall": {
+            "count": 1,
+            "total_ms": 0.1
+          },
+          "compress": {
+            "count": 5,
+            "total_ms": 5.8
+          },
+          "plan": {
+            "count": 5,
+            "total_ms": 18881.9
+          },
+          "act": {
+            "count": 4,
+            "total_ms": 36267.6
+          },
+          "remember": {
+            "count": 1,
+            "total_ms": 0.0
+          }
+        },
+        "tools": {
+          "get_stock_price": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 822.4,
+            "max_ms": 822.4
+          },
+          "retrieve": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 3966.7,
+            "max_ms": 3966.7
+          },
+          "search_news": {
+            "count": 3,
+            "fail": 1,
+            "retry": 4,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 36258.6,
+            "max_ms": 22073.9
+          },
+          "fetch_page": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 2.2,
+            "max_ms": 2.2
+          },
+          "read_tool_result": {
+            "count": 1,
+            "fail": 0,
+            "retry": 0,
+            "fallback": 0,
+            "retry_skipped": 0,
+            "circuit_open": 0,
+            "total_ms": 1.9,
+            "max_ms": 1.9
+          }
+        },
+        "errors": []
+      }
+    }
+  ]
+}

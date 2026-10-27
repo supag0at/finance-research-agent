@@ -1,0 +1,68 @@
+{
+  "688256-年报-2025.pdf": {
+    "ticker": "688256",
+    "company": "寒武纪",
+    "doc_type": "年报",
+    "fiscal_year": 2025,
+    "period_end": "2025-12-31",
+    "title": "2025年年度报告",
+    "source_url": "http://static.cninfo.com.cn/finalpage/2026-03-13/1225007336.PDF",
+    "trust_level": "official",
+    "lang": "zh"
+  },
+  "688256-半年报-2026.pdf": {
+    "ticker": "688256",
+    "company": "寒武纪",
+    "doc_type": "半年报",
+    "fiscal_year": 2026,
+    "period_end": "2026-06-30",
+    "title": "2026年半年度报告",
+    "source_url": "http://static.cninfo.com.cn/finalpage/2026-08-08/1225464969.PDF",
+    "trust_level": "official",
+    "lang": "zh"
+  },
+  "688981-年报-2025.pdf": {
+    "ticker": "688981",
+    "company": "中芯国际",
+    "doc_type": "年报",
+    "fiscal_year": 2025,
+    "period_end": "2025-12-31",
+    "title": "中芯国际2025年年度报告",
+    "source_url": "http://static.cninfo.com.cn/finalpage/2026-03-27/1225037057.PDF",
+    "trust_level": "official",
+    "lang": "zh"
+  },
+  "688981-半年报-2026.pdf": {
+    "ticker": "688981",
+    "company": "中芯国际",
+    "doc_type": "半年报",
+    "fiscal_year": 2026,
+    "period_end": "2026-06-30",
+    "title": "中芯国际2026年半年度报告",
+    "source_url": "http://static.cninfo.com.cn/finalpage/2026-08-28/1225520297.PDF",
+    "trust_level": "official",
+    "lang": "zh"
+  },
+  "688041-年报-2025.pdf": {
+    "ticker": "688041",
+    "company": "海光信息",
+    "doc_type": "年报",
+    "fiscal_year": 2025,
+    "period_end": "2025-12-31",
+    "title": "海光信息技术股份有限公司2025年年度报告",
+    "source_url": "http://static.cninfo.com.cn/finalpage/2026-04-08/1225083088.PDF",
+    "trust_level": "official",
+    "lang": "zh"
+  },
+  "688041-半年报-2026.pdf": {
+    "ticker": "688041",
+    "company": "海光信息",
+    "doc_type": "半年报",
+    "fiscal_year": 2026,
+    "period_end": "2026-06-30",
+    "title": "海光信息技术股份有限公司2026年半年度报告",
+    "source_url": "http://static.cninfo.com.cn/finalpage/2026-08-14/1225472510.PDF",
+    "trust_level": "official",
+    "lang": "zh"
+  }
+}

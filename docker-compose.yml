@@ -1,0 +1,26 @@
+# Local infrastructure: vector store, relational store / checkpoints, optional tracing UI.
+#   docker compose up -d                  # qdrant + postgres
+#   docker compose --profile tracing up -d  # + Phoenix (OBS_TRACING=1)
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    ports: ["6333:6333", "6334:6334"]
+    volumes: [qdrant_data:/qdrant/storage]
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: newsrag
+    ports: ["5432:5432"]
+    volumes: [pg_data:/var/lib/postgresql/data]
+
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    profiles: [tracing]
+    ports: ["6006:6006", "4317:4317"]
+
+volumes:
+  qdrant_data:
+  pg_data:

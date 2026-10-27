@@ -1,0 +1,47 @@
+① analyze 失败 → 原问题 + 无过滤
+  [通过] 坏 JSON:degraded 记 analyze —— ['analyze']
+  [通过] 坏 JSON:只用原问题检索、不带过滤 —— [('英伟达数据中心收入', None)]
+  [通过] 坏 JSON:仍然返回证据
+  [通过] 超时:degraded 记 analyze —— ['analyze']
+  [通过] 超时:只用原问题检索、不带过滤 —— [('英伟达数据中心收入', None)]
+  [通过] 超时:仍然返回证据
+② 过滤值过白名单
+  [通过] 拼错的 ticker 和不存在的年份都被丢掉,检索不带过滤 —— [('英伟达 2031 财年收入', None), ('q', None)]
+  [通过] events 里记了丢弃原因
+③ 过滤后为空 → 按 fiscal_year → doc_type → ticker 放宽
+  [通过] 放宽记录 = drop fiscal_year —— ['drop fiscal_year']
+  [通过] 放宽后拿到证据
+  [通过] summary notes 提醒期间可能对不上
+④ rerank 失败 → 降级记录一路传到 summary
+  [通过] summary.degraded 含 rerank
+⑤ grade 失败 → 放行现有证据
+  [通过] degraded 记 grade,证据照常返回
+  [通过] 没有进入改写
+⑥ 两轮都缺 → 联网兜底
+  [通过] 调用顺序 analyze → grade → rewrite → grade —— ['analyze', 'grade', 'rewrite', 'grade']
+  [通过] 第 2 轮 = q0 + 改写后的查询 —— [('q', {'must': [{'key': 'ticker', 'match': {'any': ['NVDA']}}]}), ('NVIDIA annual Data Center', {'must': [{'key': 'ticker', 'match': {'any': ['NVDA']}}]})]
+  [通过] 第 2 轮按改写要求去掉了 fiscal_year,ticker 保留 —— [('q', {'must': [{'key': 'ticker', 'match': {'any': ['NVDA']}}]}), ('NVIDIA annual Data Center', {'must': [{'key': 'ticker', 'match': {'any': ['NVDA']}}]})]
+  [通过] rounds = 2
+  [通过] 证据只剩网页,trust_level=web —— ['web']
+  [通过] 被判 missing 的知识库证据不交给主 Agent
+  [通过] coverage = web_only
+⑦ 联网也失败 → 如实标缺失
+  [通过] coverage = missing,degraded 记 web
+  [通过] 没有任何证据交出去 + notes 说'不要编造'
+⑧ realtime 意图 → 不检索
+  [通过] 没有调用检索
+  [通过] notes 引导去用行情工具
+⑨ 快速通道 / 库里没有的公司
+  [通过] 单需求 + 过滤有效 + top1 0.97 → 不调 grade —— ['analyze']
+  [通过] ticker 不在库里:top1 0.91 也不走快速通道,交给 grade
+  [通过] 库里没有的公司:grade 判缺后不改写,直接联网 —— ['analyze', 'grade']
+  [通过] notes 说明库里没有 AAPL
+⑩ pack 输出形态(不变式 4、5)
+  [通过] ref 从 1 连续编号
+  [通过] 两个需求共同命中的块只出现一次
+  [通过] 每项都有 text / source / title / score(向后兼容)
+  [通过] 每条证据都有 chunk_id 或是 web
+  [通过] 第一项是 summary(M9 §7.8:放末尾会被截掉)
+  [通过] summary 列出证据 ref
+
+全部通过

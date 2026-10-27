@@ -32,3 +32,6 @@ langgraph-checkpoint-postgres>=2.0
 pymupdf>=1.24
 # M9 Step 2:BM25 中文分词(rag/sparse.py)
 jieba>=0.42
+
+# 可选:只有 results/make_figures.py(重新生成 README 图表)需要
+# matplotlib>=3.8
