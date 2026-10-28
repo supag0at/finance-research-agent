@@ -154,7 +154,7 @@ The same events can be exported over OpenTelemetry to Phoenix as a waterfall tra
   <img alt="Retrieval ablation: Hit@5 and MRR per configuration" src="assets/figures/retrieval-ablation-light.png">
 </picture>
 
-<sub>**Figure 1.** Retrieval ablation on 72 fact questions over the same 24 documents. Each layer moves Hit@5 (blue) and MRR (orange); reranking cannot exceed the Hit@30 ceiling of 0.93.</sub>
+<sub>**Figure 1.** Share of the 72 fact questions whose answer chunk is missed in the top 5 (1 − Hit@5), same 24 documents throughout. Structure-aware chunking, hybrid retrieval and reranking each cut failures; the two rerankers tie here and differ in ranking precision (Hit@1 0.72 vs 0.82).</sub>
 
 | # | Configuration | Hit@1 | Hit@5 | Hit@30 | MRR | Latency p50 / p95 |
 |---|---|---|---|---|---|---|

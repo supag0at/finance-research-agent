@@ -26,7 +26,7 @@ THEMES = {
     "dark": {"bg": "#0d1117", "ink": "#e6edf3", "ink2": "#9198a1", "muted": "#7d8590",
              "grid": "#21262d", "s1": "#5689cf", "s2": "#cc7843", "dim": "#3d444d", "empty": "#21262d"},
 }
-FONT = ["Segoe UI", "Arial", "DejaVu Sans"]
+FONT = ["Bahnschrift", "Segoe UI", "Arial", "DejaVu Sans"]
 W = 7.2  # inches; ~1440 px at 200 dpi, shown at GitHub's ~880 px column
 
 
@@ -70,25 +70,67 @@ def _legend(ax, t, handles, loc="lower left", anchor=(0, 1.0)):
         txt.set_color(t["ink2"])
 
 
+# Warm "stage" palette for the retrieval ablation: one color per stage of the pipeline.
+STAGES = {
+    "light": {"chunk": "#C6C8BC", "hybrid": "#E9DCBC", "rerank": "#D49F7C", "axis": "#2b2a27", "divider": "#9a988f"},
+    "dark": {"chunk": "#8E9186", "hybrid": "#B9A983", "rerank": "#C98B66", "axis": "#9198a1", "divider": "#5b5a55"},
+}
+
+
+def _rounded_bar(ax, x, h, w, color, radius_px=7):
+    """Bar with rounded top corners; radius given in pixels so it survives the axes aspect."""
+    from matplotlib.patches import FancyBboxPatch
+    bbox = ax.get_window_extent()
+    (x0, x1), (y0, y1) = ax.get_xlim(), ax.get_ylim()
+    rx = radius_px * (x1 - x0) / bbox.width
+    ry = radius_px * (y1 - y0) / bbox.height
+    r = min(rx, w / 2)
+    ax.add_patch(FancyBboxPatch((x - w / 2, 0), w, h, boxstyle=f"round,pad=0,rounding_size={r}",
+                                mutation_aspect=ry / rx, facecolor=color, edgecolor="none", zorder=2))
+    ax.add_patch(Rectangle((x - w / 2, 0), w, min(h, ry * 1.2), facecolor=color, edgecolor="none", zorder=2))
+
+
 def fig_retrieval(t):
     rows = retrieval_rows()
-    names = ["Fixed chunks + dense (v1)", "Parent-child + dense", "Parent-child + BM25",
-             "Hybrid (RRF)", "Hybrid + rerank 0.6B", "Hybrid + rerank 8B"]
-    fig, ax = _fig(t, 3.0)
-    ax.xaxis.grid(True, color=t["grid"], linewidth=0.8)
-    for y, (hit, mrr) in enumerate(rows):
-        ax.plot([mrr, hit], [y, y], color=t["dim"], linewidth=2, solid_capstyle="round", zorder=1)
-        ax.scatter([mrr], [y], s=34, color=t["s2"], zorder=3, linewidths=1.5, edgecolors=t["bg"])
-        ax.scatter([hit], [y], s=46, color=t["s1"], zorder=3, linewidths=1.5, edgecolors=t["bg"])
-        ax.text(hit + 0.025, y, f"{hit:.2f}", va="center", fontsize=8.5, color=t["ink"],
-                fontweight="bold" if y == len(rows) - 1 else "normal")
-    _ylabels(ax, t, names, bold_last=True)
-    ax.set_xlim(0, 1.04)
-    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
-    h1 = ax.scatter([], [], s=46, color=t["s1"], label="Hit@5")
-    h2 = ax.scatter([], [], s=34, color=t["s2"], label="MRR")
-    _legend(ax, t, [h1, h2])
-    fig.subplots_adjust(left=0.27, right=0.98, top=0.9, bottom=0.1)
+    fail = [(1 - hit) * 100 for hit, _ in rows]
+    p = {**t, **STAGES["dark" if t["bg"] == "#0d1117" else "light"]}
+    names = ["Fixed chunks\n+ dense", "Parent-child\n+ dense", "Parent-child\n+ BM25", "Hybrid\n(RRF)",
+             "+ rerank\n0.6B", "+ rerank\n8B"]
+    stage = ["chunk", "chunk", "hybrid", "hybrid", "rerank", "rerank"]
+    xs = [0, 1, 2.4, 3.4, 4.8, 5.8]
+    fig, ax = plt.subplots(figsize=(W, 3.7), dpi=200)
+    fig.patch.set_facecolor(p["bg"])
+    ax.set_facecolor(p["bg"])
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.spines["left"].set_color(p["axis"])
+    ax.spines["bottom"].set_color(p["axis"])
+    ax.spines["left"].set_linewidth(1.4)
+    ax.spines["bottom"].set_linewidth(1.4)
+    ax.yaxis.grid(True, color=p["grid"], linewidth=0.8)
+    ax.set_axisbelow(True)
+    ax.set_xlim(-0.6, 6.4)
+    ax.set_ylim(0, 80)
+    fig.subplots_adjust(left=0.12, right=0.99, top=0.95, bottom=0.24)
+    fig.canvas.draw()
+    for x, v, st in zip(xs, fail, stage):
+        _rounded_bar(ax, x, v, 0.78, p[st])
+        last = x == xs[-1]
+        ax.text(x, v + 2, f"{v:.1f}%", ha="center", va="bottom", fontsize=10.5 if last else 9.5,
+                color=p["ink"], fontweight="bold" if last else "normal")
+    for xd in (1.7, 4.1):
+        ax.axvline(xd, color=p["divider"], linestyle=(0, (3, 3)), linewidth=1, zorder=1)
+    ax.set_xticks(xs, names)
+    ax.tick_params(axis="x", colors=p["ink2"], length=0, labelsize=8.5, pad=6)
+    ax.tick_params(axis="y", colors=p["ink2"], length=0, labelsize=8.5)
+    ax.set_yticks([0, 20, 40, 60, 80], ["", "20%", "40%", "60%", "80%"])
+    for x, lab in [(0.5, "Chunking"), (2.9, "Hybrid retrieval"), (5.3, "Reranking")]:
+        ax.text(x, -0.2, lab, transform=ax.get_xaxis_transform(), ha="center", va="top",
+                fontsize=11, color=p["ink"])
+    fig.text(0.018, 0.61, "FAILED %", rotation=90, ha="center", va="center", fontsize=12,
+             fontweight="bold", color=p["ink"])
+    fig.text(0.045, 0.61, "Missed in top 5", rotation=90, ha="center", va="center", fontsize=9,
+             color=p["ink2"])
     return fig
 
 
