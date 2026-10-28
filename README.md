@@ -46,29 +46,21 @@ Four failure modes drive the design. Each later section maps back to one of them
 
 ### 2.1 Agent graph
 
-```mermaid
-flowchart LR
-    Q([Question]) --> recall --> compress --> plan{plan}
-    plan -- tool calls --> act
-    act --> compress
-    plan -- over budget --> finalize --> remember
-    plan -- answer --> remember --> A([Answer + citations])
-    act -.- T[["get_stock_price · search_news · fetch_page<br/>retrieve · search_memory · read_tool_result"]]
-```
+<p align="center">
+  <img src="assets/figures/agent-graph.png" alt="Agent graph in three lanes: agent loop, tools, state and limits" width="100%">
+</p>
+
+<sub>**Figure 1.** The agent graph in three lanes. The loop (top) plans, calls tools in parallel and compresses context between steps. Every tool runs inside the reliability wrapper (middle). State is checkpointed to PostgreSQL after every step, memory is read before planning and written after answering, and a run that exceeds its budget is routed to `finalize`, which still produces an answer (bottom).</sub>
 
 The graph state is checkpointed to PostgreSQL after every step, so a run can resume in a new process and every step can be replayed. The hand-written loop (`core/agent.py`) is kept with the **same interface** as a reference implementation, and the whole evaluation suite runs unchanged against both.
 
 ### 2.2 Agentic retrieval subgraph (`retrieve` tool)
 
-```mermaid
-flowchart LR
-    S([query]) --> analyze --> retrieve --> grade{grade}
-    grade -- sufficient --> pack
-    grade -- missing --> rewrite --> retrieve
-    grade -- still missing --> web[web_fallback] --> pack
-    analyze -. realtime / out of scope .-> pack
-    pack --> E([evidence + summary])
-```
+<p align="center">
+  <img src="assets/figures/agentic-retrieval.drawio.png" alt="Agentic retrieval subgraph, traced with a real unanswerable question" width="100%">
+</p>
+
+<sub>**Figure 2.** The `retrieve` subgraph, traced with a real question the knowledge base cannot answer. Query analysis drops the AAPL filter because Apple is not in the catalog; hybrid retrieval returns a Broadcom paragraph scoring 0.91; grading rejects it as the wrong company, so the run falls back to the web and the summary marks coverage as `web_only`.</sub>
 
 `analyze` splits the question into 1–3 information needs with metadata filters; `grade` checks each need for the right company and period; `pack` deduplicates, applies the evidence budget and puts a coverage summary first (details in [§3.2](#32-agentic-retrieval-p1-p2)).
 
@@ -154,7 +146,7 @@ The same events can be exported over OpenTelemetry to Phoenix as a waterfall tra
   <img alt="Retrieval ablation: Hit@5 and MRR per configuration" src="assets/figures/retrieval-ablation-light.png">
 </picture>
 
-<sub>**Figure 1.** Share of the 72 fact questions whose answer chunk is missed in the top 5 (1 − Hit@5), same 24 documents throughout. Structure-aware chunking, hybrid retrieval and reranking each cut failures; the two rerankers tie here and differ in ranking precision (Hit@1 0.72 vs 0.82).</sub>
+<sub>**Figure 3.** Share of the 72 fact questions whose answer chunk is missed in the top 5 (1 − Hit@5), same 24 documents throughout. Structure-aware chunking, hybrid retrieval and reranking each cut failures; the two rerankers tie here and differ in ranking precision (Hit@1 0.72 vs 0.82).</sub>
 
 | # | Configuration | Hit@1 | Hit@5 | Hit@30 | MRR | Latency p50 / p95 |
 |---|---|---|---|---|---|---|
@@ -188,7 +180,7 @@ A Chinese question about an English filing shares no tokens with it, so BM25 fin
   <img alt="Correct refusals on unanswerable questions per configuration" src="assets/figures/agentic-refusal-light.png">
 </picture>
 
-<sub>**Figure 2.** Correct refusals on 10 unanswerable questions. Multi-query recall alone makes refusal worse; evidence grading restores it with 0 / 75 false refusals.</sub>
+<sub>**Figure 4.** Correct refusals on 10 unanswerable questions. Multi-query recall alone makes refusal worse; evidence grading restores it with 0 / 75 false refusals.</sub>
 
 | # | Configuration | Hit | MRR | Correct refusal | False refusal | LLM tokens / q | Latency p50 / p95 |
 |---|---|---|---|---|---|---|---|
@@ -211,7 +203,7 @@ A Chinese question about an English filing shares no tokens with it, so BM25 fin
   <img alt="Tool calls and web calls per question for v1, hybrid and agentic" src="assets/figures/e2e-process-light.png">
 </picture>
 
-<sub>**Figure 3.** Effort per end-to-end question (14 questions). Pass rates sit within run-to-run noise; these process metrics are stable across runs.</sub>
+<sub>**Figure 5.** Effort per end-to-end question (14 questions). Pass rates sit within run-to-run noise; these process metrics are stable across runs.</sub>
 
 Same agent and the same 14 questions; only the retrieval mode changes.
 
@@ -252,7 +244,7 @@ All suites below are offline and deterministic (fake LLM, recorded fixtures, loc
   <img alt="Total cost with no budget, a too-tight budget, and a calibrated budget" src="assets/figures/budget-lesson-light.png">
 </picture>
 
-<sub>**Figure 4.** Total cost of the 5-case regression run under three budget settings; all three pass 5 / 5. A budget set inside the healthy range interrupts normal runs and costs more.</sub>
+<sub>**Figure 6.** Total cost of the 5-case regression run under three budget settings; all three pass 5 / 5. A budget set inside the healthy range interrupts normal runs and costs more.</sub>
 
 The first budget was set by intuition (¥0.03 / 90 s). It sat **below the worst healthy run** (healthy runs measured ¥0.0074–0.0533 and 5.8–133.6 s), so it interrupted normal work. That run paid for the partial work and for an extra `finalize` call, which cost 40 % more with no quality gain. The fix was to measure the healthy distribution first and set the limit at about twice the worst healthy value. The calibration data is recorded in `core/budget.py`.
 

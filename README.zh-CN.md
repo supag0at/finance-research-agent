@@ -54,29 +54,21 @@ Agent 起步于一个手写的工具调用循环（M1），之后重构为显式
 
 ### 2.1 Agent 图
 
-```mermaid
-flowchart LR
-    Q([问题]) --> recall --> compress --> plan{plan}
-    plan -- 调工具 --> act
-    act --> compress
-    plan -- 超出预算 --> finalize --> remember
-    plan -- 作答 --> remember --> A([带引用的回答])
-    act -.- T[["get_stock_price · search_news · fetch_page<br/>retrieve · search_memory · read_tool_result"]]
-```
+<p align="center">
+  <img src="assets/figures/agent-graph.png" alt="Agent 图：主循环、工具、状态与限制三条泳道" width="100%">
+</p>
+
+<sub>**图 1.** Agent 图，分三条泳道。上：主循环负责规划、并行调用工具，并在每步之间压缩上下文。中：所有工具都运行在可靠性包装层里。下：每一步的状态都持久化到 PostgreSQL；规划前读取记忆、作答后写入记忆；超出预算的运行会被路由到 `finalize`，仍然给出答案。</sub>
 
 每一步的图状态都会持久化到 PostgreSQL，所以一次运行可以在新进程里恢复，每一步也都能回放。手写循环版（`core/agent.py`）作为参照实现保留，**接口与图版完全一致**，整套评测无需修改就能在两者上运行。
 
 ### 2.2 Agentic 检索子图（`retrieve` 工具）
 
-```mermaid
-flowchart LR
-    S([查询]) --> analyze --> retrieve --> grade{grade}
-    grade -- 证据充分 --> pack
-    grade -- 缺失 --> rewrite --> retrieve
-    grade -- 仍缺失 --> web[web_fallback] --> pack
-    analyze -. 实时 / 超出范围 .-> pack
-    pack --> E([证据 + 汇总])
-```
+<p align="center">
+  <img src="assets/figures/agentic-retrieval.drawio.png" alt="用一道真实的无答案题走一遍 Agentic 检索子图" width="100%">
+</p>
+
+<sub>**图 2.** `retrieve` 子图，用一道知识库答不了的真实问题走一遍。Query 分析发现苹果不在知识库目录里，丢弃 AAPL 过滤条件；混合检索返回一段博通的内容，分数 0.91；grade 判定公司不对，于是转去联网，汇总里把覆盖情况标为 `web_only`。</sub>
 
 `analyze` 把问题拆成 1–3 个带元数据过滤条件的信息需求；`grade` 逐个检查公司和期间是否对得上；`pack` 去重、按证据限额截取，并把覆盖情况汇总放在最前面（详见 [§3.2](#32-agentic-检索p1p2)）。
 
@@ -187,7 +179,7 @@ flowchart LR
   <img alt="检索消融:各配置的 Hit@5 与 MRR" src="assets/figures/retrieval-ablation-light.png">
 </picture>
 
-<sub>**图 1.** 72 道事实题中，答案所在块没有进入前 5 的比例（1 − Hit@5），全程使用同一批 24 篇文档。按结构切块、混合检索、重排三步各自降低了失败率；两个重排模型在这里打平，区别在排序精度（Hit@1 0.72 对 0.82）。</sub>
+<sub>**图 3.** 72 道事实题中，答案所在块没有进入前 5 的比例（1 − Hit@5），全程使用同一批 24 篇文档。按结构切块、混合检索、重排三步各自降低了失败率；两个重排模型在这里打平，区别在排序精度（Hit@1 0.72 对 0.82）。</sub>
 
 | # | 配置 | Hit@1 | Hit@5 | Hit@30 | MRR | 时延 p50 / p95 |
 |---|---|---|---|---|---|---|
@@ -227,7 +219,7 @@ flowchart LR
   <img alt="各配置在无答案题上的正确拒答数" src="assets/figures/agentic-refusal-light.png">
 </picture>
 
-<sub>**图 2.** 10 道无答案题上的正确拒答数。只做多路召回会让拒答变差；加上证据评估后恢复到 10 / 10，误拒 0 / 75。</sub>
+<sub>**图 4.** 10 道无答案题上的正确拒答数。只做多路召回会让拒答变差；加上证据评估后恢复到 10 / 10，误拒 0 / 75。</sub>
 
 | # | 配置 | 命中 | MRR | 正确拒答 | 误拒 | LLM token / 题 | 时延 p50 / p95 |
 |---|---|---|---|---|---|---|---|
@@ -250,7 +242,7 @@ flowchart LR
   <img alt="v1、混合、agentic 三种模式下每题的工具调用与联网次数" src="assets/figures/e2e-process-light.png">
 </picture>
 
-<sub>**图 3.** 端到端每题的工作量（14 道题）。通过率在两轮之间的噪声范围内；这些过程指标在多轮之间是稳定的。</sub>
+<sub>**图 5.** 端到端每题的工作量（14 道题）。通过率在两轮之间的噪声范围内；这些过程指标在多轮之间是稳定的。</sub>
 
 同一个 Agent、同样 14 道题，只换检索模式。
 
@@ -294,7 +286,7 @@ flowchart LR
   <img alt="不设预算、预算过紧、标定后预算三种情况的总成本" src="assets/figures/budget-lesson-light.png">
 </picture>
 
-<sub>**图 4.** 三种预算设置下，5 道回归题一轮的总成本；三种设置都是 5 / 5 通过。预算落在健康区间内会打断正常运行，反而更贵。</sub>
+<sub>**图 6.** 三种预算设置下，5 道回归题一轮的总成本；三种设置都是 5 / 5 通过。预算落在健康区间内会打断正常运行，反而更贵。</sub>
 
 第一版预算凭直觉设成 ¥0.03 / 90 秒。实测健康运行的分布是 ¥0.0074–0.0533、5.8–133.6 秒，这个上限**低于最差的一次健康运行**，于是在正常工作途中就被触发了。结果是既付了已完成部分的钱，又多付一次 `finalize` 的钱，总成本多了 40%，质量毫无提升。
 

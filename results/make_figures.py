@@ -72,8 +72,10 @@ def _legend(ax, t, handles, loc="lower left", anchor=(0, 1.0)):
 
 # Warm "stage" palette for the retrieval ablation: one color per stage of the pipeline.
 STAGES = {
-    "light": {"chunk": "#C6C8BC", "hybrid": "#E9DCBC", "rerank": "#D49F7C", "axis": "#2b2a27", "divider": "#9a988f"},
-    "dark": {"chunk": "#8E9186", "hybrid": "#B9A983", "rerank": "#C98B66", "axis": "#9198a1", "divider": "#5b5a55"},
+    "light": {"base": "#C6C8BC", "mid": "#E9DCBC", "final": "#D49F7C",
+              "axis": "#2b2a27", "divider": "#9a988f"},
+    "dark": {"base": "#8E9186", "mid": "#B9A983", "final": "#C98B66",
+             "axis": "#9198a1", "divider": "#5b5a55"},
 }
 
 
@@ -90,114 +92,91 @@ def _rounded_bar(ax, x, h, w, color, radius_px=7):
     ax.add_patch(Rectangle((x - w / 2, 0), w, min(h, ry * 1.2), facecolor=color, edgecolor="none", zorder=2))
 
 
-def fig_retrieval(t):
-    rows = retrieval_rows()
-    fail = [(1 - hit) * 100 for hit, _ in rows]
+def _bars(t, *, xs, values, colors, labels, ticks, ylim, yticks, ylabel, ysub,
+          groups=(), dividers=(), bold=(), h=3.7, width=0.78):
+    """Shared style for every bar chart: warm stage colors, rounded tops, values on top,
+    dashed dividers between groups, bold metric label on the left."""
     p = {**t, **STAGES["dark" if t["bg"] == "#0d1117" else "light"]}
-    names = ["Fixed chunks\n+ dense", "Parent-child\n+ dense", "Parent-child\n+ BM25", "Hybrid\n(RRF)",
-             "+ rerank\n0.6B", "+ rerank\n8B"]
-    stage = ["chunk", "chunk", "hybrid", "hybrid", "rerank", "rerank"]
-    xs = [0, 1, 2.4, 3.4, 4.8, 5.8]
-    fig, ax = plt.subplots(figsize=(W, 3.7), dpi=200)
+    fig, ax = plt.subplots(figsize=(W, h), dpi=200)
     fig.patch.set_facecolor(p["bg"])
     ax.set_facecolor(p["bg"])
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
-    ax.spines["left"].set_color(p["axis"])
-    ax.spines["bottom"].set_color(p["axis"])
-    ax.spines["left"].set_linewidth(1.4)
-    ax.spines["bottom"].set_linewidth(1.4)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(p["axis"])
+        ax.spines[side].set_linewidth(1.4)
     ax.yaxis.grid(True, color=p["grid"], linewidth=0.8)
     ax.set_axisbelow(True)
-    ax.set_xlim(-0.6, 6.4)
-    ax.set_ylim(0, 80)
-    fig.subplots_adjust(left=0.12, right=0.99, top=0.95, bottom=0.24)
+    ax.set_xlim(xs[0] - 0.6, xs[-1] + 0.6)
+    ax.set_ylim(0, ylim)
+    fig.subplots_adjust(left=0.12, right=0.99, top=0.95, bottom=0.24 if groups else 0.17)
     fig.canvas.draw()
-    for x, v, st in zip(xs, fail, stage):
-        _rounded_bar(ax, x, v, 0.78, p[st])
-        last = x == xs[-1]
-        ax.text(x, v + 2, f"{v:.1f}%", ha="center", va="bottom", fontsize=10.5 if last else 9.5,
-                color=p["ink"], fontweight="bold" if last else "normal")
-    for xd in (1.7, 4.1):
+    for i, (x, v, c, lab) in enumerate(zip(xs, values, colors, labels)):
+        _rounded_bar(ax, x, v, width, p[c])
+        ax.text(x, v + ylim * 0.025, lab, ha="center", va="bottom", fontsize=10.5 if i in bold else 9.5,
+                color=p["ink"], fontweight="bold" if i in bold else "normal")
+    for xd in dividers:
         ax.axvline(xd, color=p["divider"], linestyle=(0, (3, 3)), linewidth=1, zorder=1)
-    ax.set_xticks(xs, names)
+    ax.set_xticks(xs, ticks)
     ax.tick_params(axis="x", colors=p["ink2"], length=0, labelsize=8.5, pad=6)
     ax.tick_params(axis="y", colors=p["ink2"], length=0, labelsize=8.5)
-    ax.set_yticks([0, 20, 40, 60, 80], ["", "20%", "40%", "60%", "80%"])
-    for x, lab in [(0.5, "Chunking"), (2.9, "Hybrid retrieval"), (5.3, "Reranking")]:
+    ax.set_yticks([v for v, _ in yticks], [l for _, l in yticks])
+    for x, lab in groups:
         ax.text(x, -0.2, lab, transform=ax.get_xaxis_transform(), ha="center", va="top",
                 fontsize=11, color=p["ink"])
-    fig.text(0.018, 0.61, "FAILED %", rotation=90, ha="center", va="center", fontsize=12,
+    mid = 0.61 if groups else 0.56
+    fig.text(0.018, mid, ylabel, rotation=90, ha="center", va="center", fontsize=12,
              fontweight="bold", color=p["ink"])
-    fig.text(0.045, 0.61, "Missed in top 5", rotation=90, ha="center", va="center", fontsize=9,
-             color=p["ink2"])
+    fig.text(0.045, mid, ysub, rotation=90, ha="center", va="center", fontsize=9, color=p["ink2"])
     return fig
+
+
+def fig_retrieval(t):
+    fail = [(1 - hit) * 100 for hit, _ in retrieval_rows()]
+    return _bars(
+        t, xs=[0, 1, 2.4, 3.4, 4.8, 5.8], values=fail,
+        colors=["base", "base", "mid", "mid", "final", "final"],
+        labels=[f"{v:.1f}%" for v in fail], bold={5},
+        ticks=["Fixed chunks\n+ dense", "Parent-child\n+ dense", "Parent-child\n+ BM25", "Hybrid\n(RRF)",
+               "+ rerank\n0.6B", "+ rerank\n8B"],
+        ylim=80, yticks=[(0, ""), (20, "20%"), (40, "40%"), (60, "60%"), (80, "80%")],
+        ylabel="FAILED %", ysub="Missed in top 5",
+        groups=[(0.5, "Chunking"), (2.9, "Hybrid retrieval"), (5.3, "Reranking")], dividers=(1.7, 4.1))
 
 
 def fig_refusal(t):
     # results/retrieval/rag_agentic_20261022.json, rows 4b* / 5 / 6 / 7
-    names = ["Hybrid + rerank (no agent)", "+ query analysis", "+ query analysis + HyDE", "Full agentic (+ grading)"]
     refused = [6, 3, 5, 10]
-    fig, ax = _fig(t, 2.1)
-    size, gap = 0.62, 0.38
-    for y, n in enumerate(refused):
-        color = t["s1"] if y == len(refused) - 1 else t["ink2"]
-        for k in range(10):
-            ax.add_patch(Rectangle((k * (size + gap) * 0.1, y - size / 2), size * 0.1, size,
-                                   color=color if k < n else t["empty"], linewidth=0))
-        ax.text(1.03, y, f"{n} / 10", va="center", fontsize=9, color=t["ink"],
-                fontweight="bold" if y == len(refused) - 1 else "normal")
-    _ylabels(ax, t, names, bold_last=True)
-    ax.set_xlim(-0.01, 1.14)
-    ax.set_ylim(len(names) - 0.4, -0.6)
-    ax.set_xticks([])
-    fig.subplots_adjust(left=0.27, right=0.98, top=0.97, bottom=0.04)
-    return fig
+    return _bars(
+        t, xs=[0, 1.4, 2.4, 3.8], values=refused, colors=["base", "mid", "mid", "final"],
+        labels=[f"{v} / 10" for v in refused], bold={3},
+        ticks=["Hybrid + rerank", "+ query\nanalysis", "+ query analysis\n+ HyDE", "+ evidence\ngrading"],
+        ylim=11, yticks=[(0, ""), (5, "5"), (10, "10")],
+        ylabel="REFUSALS", ysub="Correct, out of 10",
+        groups=[(0, "No agent"), (1.9, "Multi-query recall"), (3.8, "Full agentic")], dividers=(0.7, 3.1))
 
 
 def fig_e2e(t):
     # results/e2e/: v1 = 2026-10-22_084500, hybrid = 2026-10-24_082937, agentic = 2026-10-24_082818
-    modes = ["v1 (toy corpus)", "Hybrid", "Agentic"]
-    series = [("Tool calls / question", [9.2, 4.2, 2.4], "s1"), ("Web calls / question", [6.1, 1.6, 0.8], "s2")]
-    fig, ax = _fig(t, 2.9)
-    ax.yaxis.grid(True, color=t["grid"], linewidth=0.8)
-    handles = []
-    for label, vals, key in series:
-        (h,) = ax.plot(range(3), vals, color=t[key], linewidth=2, marker="o", markersize=6.5,
-                       markeredgecolor=t["bg"], markeredgewidth=1.5, label=label, zorder=3)
-        handles.append(h)
-        for x, v in enumerate(vals):
-            ax.text(x, v + 0.45, f"{v:.1f}", ha="center", fontsize=8.5, color=t["ink"],
-                    fontweight="bold" if x == 2 else "normal")
-    ax.set_xticks(range(3), modes)
-    for lab in ax.get_xticklabels():
-        lab.set_color(t["ink2"])
-        lab.set_fontsize(9)
-    ax.set_xlim(-0.35, 2.35)
-    ax.set_ylim(0, 10.5)
-    ax.set_yticks([0, 2, 4, 6, 8, 10])
-    _legend(ax, t, handles)
-    fig.subplots_adjust(left=0.06, right=0.98, top=0.9, bottom=0.12)
-    return fig
+    vals = [9.2, 4.2, 2.4, 6.1, 1.6, 0.8]
+    return _bars(
+        t, xs=[0, 1, 2, 3.4, 4.4, 5.4], values=vals, colors=["base", "mid", "final"] * 2,
+        labels=[f"{v:.1f}" for v in vals], bold={2, 5},
+        ticks=["v1\n(toy corpus)", "Hybrid", "Agentic"] * 2,
+        ylim=10.5, yticks=[(0, ""), (2, "2"), (4, "4"), (6, "6"), (8, "8"), (10, "10")],
+        ylabel="CALLS", ysub="Per question, 14 questions",
+        groups=[(1, "Tool calls"), (4.4, "Web calls")], dividers=(2.7,))
 
 
 def fig_budget(t):
     # M6 calibration runs on the 5-case regression set (total cost of one run; pass 5/5 in all three)
-    names = ["No run budget (baseline)", "Budget below healthy runs", "Budget calibrated (≈2× worst healthy)"]
     cost = [0.0990, 0.1389, 0.1179]
-    colors = [t["dim"], t["s2"], t["s1"]]
-    fig, ax = _fig(t, 1.9)
-    ax.xaxis.grid(True, color=t["grid"], linewidth=0.8)
-    ax.barh(range(3), cost, height=0.42, color=colors, zorder=2)
-    for y, v in enumerate(cost):
-        delta = "" if y == 0 else f"  (+{(v / cost[0] - 1) * 100:.0f}%)"
-        ax.text(v + 0.002, y, f"¥{v:.4f}{delta}", va="center", fontsize=8.5, color=t["ink"],
-                fontweight="bold" if y == 1 else "normal")
-    _ylabels(ax, t, names)
-    ax.set_xlim(0, 0.175)
-    ax.set_xticks([0, 0.05, 0.10, 0.15], ["¥0", "¥0.05", "¥0.10", "¥0.15"])
-    fig.subplots_adjust(left=0.31, right=0.98, top=0.97, bottom=0.14)
-    return fig
+    return _bars(
+        t, xs=[0, 1, 2], values=cost, colors=["base", "final", "mid"],
+        labels=["¥0.099", "¥0.139  (+40%)", "¥0.118  (+19%)"], bold={1},
+        ticks=["No run budget", "Budget below\nhealthy runs", "Budget calibrated\n(≈2× worst healthy)"],
+        ylim=0.16, yticks=[(0, ""), (0.05, "¥0.05"), (0.10, "¥0.10"), (0.15, "¥0.15")],
+        ylabel="COST", ysub="5-case regression run", h=3.3, width=0.6)
 
 
 def main():
